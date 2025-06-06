@@ -10,7 +10,6 @@
     <!-- DNS 預解析 -->
     <link rel="dns-prefetch" href="//www.gstatic.com">
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
-    <link rel="dns-prefetch" href="//em-content.zobj.net">
     
     <!-- 預加載關鍵資源 -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" as="style">
@@ -144,10 +143,6 @@ h2 {
     position: relative;
 }
 
-.input-wrapper i {
-    display: none;
-}
-
 .input-wrapper input {
     width: 100%;
     padding: var(--space-3) var(--space-4);
@@ -207,21 +202,15 @@ button {
     -ms-flex-pack: center;
     justify-content: center;
     box-shadow: var(--shadow-sm);
-    /* 移除 gap 屬性避免兼容性問題 */
     position: relative;
     z-index: 1;
-    /* 確保按鈕在最上層 */
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-    /* 移除Android點擊高亮 */
     -webkit-touch-callout: none;
-    /* 禁用長按菜單 */
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
-    /* 防止文字選擇 */
     min-height: 48px;
-    /* Android觸控最小尺寸 */
 }
 
 button:hover {
@@ -235,17 +224,13 @@ button:active {
     box-shadow: var(--shadow-sm);
 }
 
-/* 專門為申請按鈕添加樣式 */
 .submit-btn {
     font-size: 1rem;
     font-weight: 700;
     min-height: 52px;
-    /* 更大的觸控區域 */
     letter-spacing: 0.5px;
-    /* 改善可讀性 */
 }
 
-/* 緊湊頂部導航 */
 .header {
     background: var(--bg-primary);
     border-radius: var(--radius-lg);
@@ -293,8 +278,6 @@ button:active {
     -ms-flex-align: center;
     align-items: center;
 }
-
-
 
 .member-status {
     display: -webkit-box;
@@ -368,7 +351,6 @@ button:active {
     box-shadow: var(--shadow-md);
 }
 
-/* 緊湊標籤頁樣式 */
 .tabs {
     display: -webkit-box;
     display: -webkit-flex;
@@ -417,7 +399,6 @@ button:active {
     display: block;
 }
 
-/* 緊湊支付類型卡片 */
 .payment-types {
     display: -ms-grid;
     display: grid;
@@ -428,17 +409,15 @@ button:active {
     transition: var(--transition-normal);
 }
 
-/* 行動裝置滾動後的輕微高亮動畫 - 優化版本 */
 .payment-types.scroll-highlight {
     animation: gentlePulse 2s ease-in-out;
-    /* 確保動畫結束後回到原始狀態 */
     animation-fill-mode: both;
 }
 
 @keyframes gentlePulse {
     0% {
         box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
-        transform: translateZ(0); /* 啟用硬體加速 */
+        transform: translateZ(0);
     }
     50% {
         box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.1);
@@ -450,7 +429,6 @@ button:active {
     }
 }
 
-/* Fallback for older browsers */
 @supports not (display: grid) {
     .payment-types {
         display: -webkit-box;
@@ -533,18 +511,16 @@ button:active {
     font-size: 1rem;
     font-weight: 600;
     transition: var(--transition-normal);
-    display: none; /* 預設隱藏文字 */
+    display: none;
 }
 
 .payment-type-card h3.show-text {
-    display: block; /* 當圖片載入失敗時顯示 */
+    display: block;
 }
 
 .payment-type-card:hover img {
     transform: scale(1.1);
 }
-
-
 
 .payment-type-card p {
     margin: var(--space-1) 0 0;
@@ -631,7 +607,6 @@ button:active {
     }
 }
 
-/* 訂單列表 */
 .order-list {
     display: -ms-grid;
     display: grid;
@@ -641,7 +616,6 @@ button:active {
     margin-top: 20px;
 }
 
-/* Fallback for older browsers */
 @supports not (display: grid) {
     .order-list {
         display: -webkit-box;
@@ -719,7 +693,6 @@ button:active {
     font-weight: 500;
 }
 
-/* 狀態樣式 */
 .order-status {
     display: inline-flex;
     align-items: center;
@@ -758,7 +731,6 @@ button:active {
     color: #155724;
 }
 
-/* 訂單項目操作按鈕 */
 .order-item-action-btn {
     width: 100%;
     margin-top: var(--space-3);
@@ -780,7 +752,6 @@ button:active {
     box-shadow: var(--shadow-md);
 }
 
-/* 計算金額顯示 */
 .calculated-amount {
     background: var(--bg-secondary);
     padding: var(--space-3);
@@ -798,7 +769,6 @@ button:active {
 
 
 
-/* 緊湊會員優惠層級顯示 */
 .member-benefits-display {
     background: var(--bg-primary);
     border-radius: var(--radius-lg);
@@ -824,7 +794,6 @@ button:active {
     gap: var(--space-3);
 }
 
-/* Fallback for older browsers */
 @supports not (display: grid) {
     .benefits-grid {
         display: -webkit-box;
@@ -1094,13 +1063,9 @@ button:active {
     transition: var(--transition-normal);
     box-shadow: var(--shadow-sm);
     margin: 0 0 var(--space-3) 0;
-    /* 使用 margin 代替 gap 以提升兼容性 */
     white-space: nowrap;
-    /* 確保按鈕內容不會換行 */
     min-height: 44px;
-    /* 符合行動裝置觸控標準 */
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-    /* 移除 Android 點擊高亮 */
 }
 
 .contact-support-btn:hover {
@@ -1118,16 +1083,10 @@ button:active {
 
 .contact-support-btn i {
     font-size: 1.25rem;
-    /* 調整圖標大小避免佈局問題 */
     margin-right: 0.5rem;
-    /* 使用 margin 代替 gap */
     vertical-align: middle;
-    /* 確保圖標垂直居中 */
     line-height: 1;
-    /* 防止圖標影響行高 */
 }
-
-
 
 .others-container .upload-card {
     margin-top: 0;
@@ -1144,7 +1103,6 @@ button:active {
     display: block;
 }
 
-/* 響應式設計 */
 @media (max-width: 768px) {
     .others-container {
         grid-template-columns: 1fr;
@@ -1167,7 +1125,6 @@ button:active {
         padding: 12px 20px;
         font-size: 0.9rem;
         min-height: 48px;
-        /* 符合 Android 觸控建議 */
         -webkit-box-pack: center;
         -webkit-justify-content: center;
         -ms-flex-pack: center;
@@ -1175,7 +1132,6 @@ button:active {
         margin: 0 auto var(--space-3) auto;
         border: none;
         outline: none;
-        /* 確保無邊框和輪廓 */
     }
     
     .contact-support-btn i {
@@ -1204,7 +1160,6 @@ button:active {
         margin-right: 4px;
     }
     
-    /* Android設備按鈕優化 */
     button, .submit-btn {
         min-height: 50px;
         font-size: 1rem;
@@ -1212,9 +1167,7 @@ button:active {
         appearance: none;
         border: none;
         outline: none;
-        /* 確保觸控事件正常 */
         pointer-events: auto;
-        /* 避免被其他元素遮擋 */
         z-index: 10;
         position: relative;
     }
@@ -1225,13 +1178,11 @@ button:active {
         -webkit-tap-highlight-color: transparent;
     }
     
-    /* 確保表單不會被虛擬鍵盤遮擋 */
     .container {
         padding-bottom: 100px;
     }
 }
 
-/* Android Chrome特定修正 */
 @media screen and (-webkit-min-device-pixel-ratio: 1) {
     button {
         -webkit-appearance: none;
@@ -2835,8 +2786,6 @@ class PaymentApp {
             });
         }
 
-
-
         // Hash 變化監聽
         window.addEventListener('hashchange', this.handleHashChange.bind(this));
 
@@ -3430,11 +3379,11 @@ class PaymentApp {
         } catch (error) {
             console.error('檢查登入狀態失敗:', error);
             if (!cachedMemberData) {
-                 if (error.message !== 'timeout') {
+                if (error.message !== 'timeout') {
                     this.showError('無法驗證您的登入狀態，請檢查網路連線或稍後再試。');
                 }
             } else {
-                 this.showError('與伺服器同步資料時發生錯誤，部分資訊可能不是最新的。');
+                this.showError('與伺服器同步資料時發生錯誤，部分資訊可能不是最新的。');
             }
         }
     }
@@ -3521,20 +3470,14 @@ class PaymentApp {
         }
     
         try {
-            // 手動驗證表單（Android兼容性更好）
-            const manualValidationErrors = this.validateFormManually();
-            if (manualValidationErrors.length > 0) {
-                this.showError(manualValidationErrors.join('\n'));
-                return;
-            }
-            
-            const formData = await this.getFormData();
-            const validationErrors = this.validateOrderData(formData);
-    
+            // 驗證表單數據
+            const validationErrors = this.validateFormData();
             if (validationErrors.length > 0) {
                 this.showError(validationErrors.join('\n'));
                 return;
             }
+            
+            const formData = await this.getFormData();
 
             // 檢查檔案上傳和輸入
             const paymentType = formData.paymentType;
@@ -3613,20 +3556,21 @@ class PaymentApp {
     // 處理編輯提交
     async handleEditSubmit() {
         try {
-            const formData = await this.getFormData();
-            const validationErrors = this.validateOrderData(formData);
-            
+            const validationErrors = this.validateFormData();
             if (validationErrors.length > 0) {
                 this.showError(validationErrors.join('\n'));
                 return;
             }
+            
+            const formData = await this.getFormData();
 
             await this.db.collection('orders').doc(this.editingOrderId).update({
                 paymentType: formData.paymentType,
                 amount: formData.amount,
                 phone: formData.phone,
                 orderNumber: formData.orderNumber,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                lastUpdated: new Date().toISOString()
             });
 
             alert('訂單更新成功');
@@ -3652,6 +3596,7 @@ class PaymentApp {
             orderNumber: document.getElementById('orderNumberDisplay').textContent,
             status: 'pending',
             createdAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString(),
             expectedCompletionTime: new Date(Date.now() + defaultDays * 24 * 60 * 60 * 1000).toISOString(),
             wechatAccount: document.getElementById('wechatAccount')?.value.trim() || '',
             alipayAccount: document.getElementById('alipayAccount')?.value.trim() || '',
@@ -3660,8 +3605,8 @@ class PaymentApp {
         };
     }
 
-    // 手動驗證表單（Android兼容性更好）
-    validateFormManually() {
+    // 統一驗證表單數據
+    validateFormData() {
         const errors = [];
         
         // 檢查登入狀態
@@ -3685,19 +3630,6 @@ class PaymentApp {
         
         return errors;
     }
-
-    // 驗證訂單數據
-    validateOrderData(data) {
-        const errors = [];
-        
-        if (!data.paymentType) errors.push('請選擇支付類型');
-        if (!data.amount || data.amount <= 0) errors.push('請輸入有效的採購金額');
-        if (!data.phone) errors.push('請先登入會員');
-        
-        return errors;
-    }
-
-
 
     // 上傳訂單檔案
     async uploadOrderFiles(orderRef, paymentType) {
@@ -3756,7 +3688,10 @@ class PaymentApp {
             
             const url = await this.uploadFile(file, path);
             
-            await orderRef.update({ [config.field]: url });
+            await orderRef.update({ 
+                [config.field]: url,
+                lastUpdated: new Date().toISOString()
+            });
             
         } catch (error) {
             console.error('檔案上傳過程失敗:', error);
@@ -4498,7 +4433,7 @@ class PaymentApp {
             timestamp: new Date().toISOString(),
             userPhone: sessionStorage.getItem('userPhone') || 'unknown'
         }).catch(() => {});
-        }
+    }
 
     hideSuspensionModal() {
         const modal = document.getElementById('suspensionModal');

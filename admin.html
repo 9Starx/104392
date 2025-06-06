@@ -6,28 +6,66 @@
     <title>後台管理系統</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh_tw.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
     <script>
-        // 異步初始化 flatpickr 本地化，避免阻塞
-        setTimeout(() => {
-            try {
-                if (typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.zh_tw) {
-                    flatpickr.localize(flatpickr.l10ns.zh_tw);
-                    // console.log('Flatpickr 中文本地化載入成功'); // 生產環境可註釋
+        // 改進的 Flatpickr 中文本地化載入
+        (function() {
+            // 自定義中文語言配置
+            const zhTWConfig = {
+                weekdays: {
+                    shorthand: ['日', '一', '二', '三', '四', '五', '六'],
+                    longhand: ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+                },
+                months: {
+                    shorthand: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+                    longhand: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
+                },
+                daysInMonth: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+                firstDayOfWeek: 1,
+                ordinal: function() {
+                    return '';
+                },
+                rangeSeparator: ' 至 ',
+                weekAbbreviation: '週',
+                scrollTitle: '滾動切換',
+                toggleTitle: '點擊切換 12/24 小時時制',
+                amPM: ['上午', '下午'],
+                yearAriaLabel: '年',
+                time_24hr: true
+            };
+
+            // 等待 flatpickr 載入完成後設置本地化
+            function initializeFlatpickrLocale() {
+                if (typeof flatpickr !== 'undefined') {
+                    try {
+                        // 直接設置中文配置
+                        if (!flatpickr.l10ns) {
+                            flatpickr.l10ns = {};
+                        }
+                        flatpickr.l10ns.zh_tw = zhTWConfig;
+                        flatpickr.localize(zhTWConfig);
+
+                    } catch (error) {
+                        console.error('❌ Flatpickr 本地化設置錯誤:', error);
+                    }
                 } else {
-                    console.warn('Flatpickr 中文本地化載入失敗，將使用英文預設');
+                    // 如果 flatpickr 還沒載入完成，稍後重試
+                    setTimeout(initializeFlatpickrLocale, 50);
                 }
-            } catch (error) {
-                console.error('Flatpickr 本地化初始化錯誤:', error);
             }
-        }, 100); // 增加延遲確保資源載入完成
+
+            // DOM 載入完成後初始化
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeFlatpickrLocale);
+            } else {
+                initializeFlatpickrLocale();
+            }
+        })();
     </script>
     <style>
-        /* 基礎樣式 */
         :root {
             --primary-color: #2563eb;
             --primary-hover: #1d4ed8;
@@ -96,7 +134,6 @@
             font-weight: 600;
         }
 
-        /* 導航選單樣式 */
         .nav-menu {
             display: -webkit-box;
             display: -webkit-flex;
@@ -136,7 +173,6 @@
             box-shadow: var(--shadow-hover);
         }
 
-        /* 功能區塊樣式 */
         .function-section {
             display: none;
         }
@@ -145,7 +181,6 @@
             display: block;
         }
 
-        /* 模態框基礎樣式 */
         .modal {
             display: none;
             position: fixed;
@@ -155,14 +190,13 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0,0,0,0.5);
-            -webkit-backdrop-filter: blur(4px); /* Safari支援 */
+            -webkit-backdrop-filter: blur(4px);
             backdrop-filter: blur(4px);
         }
 
-        /* backdrop-filter 降級支援 */
         @supports not (backdrop-filter: blur()) {
             .modal {
-                background-color: rgba(0,0,0,0.7); /* 更深的背景色 */
+                background-color: rgba(0,0,0,0.7);
             }
         }
 
@@ -201,7 +235,6 @@
             transform: scale(1.1);
         }
 
-        /* 按鈕樣式 */
         button, .btn {
             padding: 12px 24px;
             border: none;
@@ -294,7 +327,19 @@
             transform: scale(1.1);
         }
 
-        /* 表格樣式 */
+        .order-action-btn {
+            border-radius: var(--border-radius-small);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .order-action-btn:hover {
+            transform: translateY(-1px);
+        }
+
         table {
             width: 100%;
             border-collapse: separate;
@@ -313,7 +358,6 @@
             font-size: 14px;
         }
 
-        /* 操作欄樣式 */
         th:last-child, td:last-child {
             width: 100px;
             text-align: center;
@@ -332,7 +376,6 @@
             background-color: var(--bg-lighter);
         }
 
-        /* 表單元素樣式 */
         .form-group {
             margin-bottom: 15px;
         }
@@ -379,7 +422,6 @@
             resize: vertical;
         }
 
-        /* 數據總覽樣式 */
         .dashboard-section {
             padding: 20px;
             background: white;
@@ -396,7 +438,6 @@
             margin: 20px 0;
         }
 
-        /* Fallback for older browsers */
         @supports not (display: grid) {
             .stats-grid {
                 display: -webkit-box;
@@ -449,7 +490,6 @@
             font-size: 14px;
         }
 
-        /* 圖表容器樣式 */
         .chart-container {
             display: -ms-grid;
             display: grid;
@@ -459,7 +499,6 @@
             margin-top: 30px;
         }
 
-        /* Fallback for older browsers */
         @supports not (display: grid) {
             .chart-container {
                 display: -webkit-box;
@@ -486,7 +525,7 @@
             padding: 20px;
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
-            height: 400px; /* 固定高度 */
+            height: 400px;
             position: relative;
         }
 
@@ -511,14 +550,12 @@
             border-radius: 2px;
         }
 
-        /* 圖表畫布容器 */
         .chart-canvas-container {
             position: relative;
             width: 100%;
-            height: calc(100% - 50px); /* 減去標題的高度 */
+            height: calc(100% - 50px);
         }
 
-        /* 會員狀態樣式 - 統一精簡版本 */
         .member-status {
             display: -webkit-inline-box;
             display: -webkit-inline-flex;
@@ -557,9 +594,7 @@
             color: white;
         }
 
-        /* 移除動畫效果以提升載入速度 */
 
-        /* 響應式設計 */
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -588,15 +623,11 @@
             }
         }
 
-        /* 訂單詳情模態框樣式 */
+        /* 訂單詳情模態框樣式 - 合併版本 */
         #orderModal .modal-content {
             max-width: 800px;
-            padding: 30px;
-        }
-
-        /* orderModal 滾輪支援 */
-        #orderModal .modal-content {
             max-height: 90vh;
+            padding: 30px;
             overflow-y: auto;
             overflow-x: hidden;
         }
@@ -1336,7 +1367,16 @@
             background: linear-gradient(135deg, #fef3c7, #f59e0b);
             color: #d97706;
             box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+            transition: var(--transition);
         }
+
+        .confirm-icon.danger {
+            background: linear-gradient(135deg, #fecaca, #ef4444);
+            color: #dc2626;
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+        }
+
+
 
         .confirm-title {
             font-size: 18px;
@@ -1347,10 +1387,13 @@
         }
 
         .confirm-message {
-            font-size: 14px;
-            color: var(--text-muted);
-            line-height: 1.5;
+            font-size: 16px;
+            color: var(--text-color);
+            line-height: 1.4;
             margin-bottom: 20px;
+            white-space: pre-line; /* 支援換行符顯示 */
+            text-align: center;
+            font-weight: 500;
         }
 
         .confirm-buttons {
@@ -1400,6 +1443,18 @@
         .confirm-btn-secondary:hover {
             background: #e5e7eb;
             transform: translateY(-1px);
+        }
+
+        .confirm-btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        }
+
+        .confirm-btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
         }
 
 
@@ -1612,16 +1667,52 @@
             min-width: 80px;
         }
 
-        .view-btn {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            color: white;
-            min-width: 80px;
+        .clickable-title {
+            cursor: pointer;
+            color: #3b82f6 !important;
+            text-decoration: underline;
+            transition: all 0.3s ease;
         }
 
-        .view-btn:hover {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        .clickable-title:hover {
+            color: #2563eb !important;
             transform: translateY(-1px);
+        }
+
+
+
+        /* 刪除按鈕容器樣式 */
+        .delete-button-container {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            z-index: 1002;
+        }
+
+        .delete-member-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: white;
+            padding: 10px 16px;
+            border-radius: var(--border-radius-small);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: var(--shadow);
+        }
+
+        .delete-member-btn:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .delete-member-btn:active {
+            transform: translateY(0);
         }
 
         @media (max-width: 768px) {
@@ -1637,6 +1728,18 @@
                 flex-direction: column;
             }
 
+                        /* 移動端刪除按鈕調整 */
+            .delete-button-container {
+                position: static;
+                margin-top: 20px;
+                text-align: center;
+            }
+            
+            .delete-member-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
             .button-group > * + * {
                 margin-left: 0;
                 margin-top: 15px;
@@ -1917,9 +2020,7 @@
                     class="login-input" 
                     autocomplete="current-password"
                     maxlength="6"
-                    pattern="[0-9]*"
-                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                    placeholder="請輸入6位數字密碼"
+                    inputmode="numeric"
                 >
                 <div id="loginError" class="login-error"></div>
                 <div id="lockoutMessage" class="lockout-message"></div>
@@ -2055,7 +2156,7 @@
     <div id="settingsModal" class="modal">
         <div class="modal-content settings-modal">
             <span class="close" onclick="closeSettingsModal()">&times;</span>
-            <h2 class="settings-title">
+            <h2 class="settings-title clickable-title" onclick="openCNYCalculator()" title="點擊查看大草原計算機">
                 採購成本設定
             </h2>
             <div class="function-content" id="procurementContent">
@@ -2084,9 +2185,6 @@
                         </div>
                     </div>
                     <div class="button-group">
-                        <button onclick="openCNYCalculator()" class="btn-info view-btn">
-                            查看
-                        </button>
                         <button onclick="saveSettings()" class="btn-primary save-btn">
                             保存
                         </button>
@@ -2695,16 +2793,12 @@
                     return;
                 }
                 
-                console.log('開始載入圖片預覽:', {
-                    name: imageData.name,
-                    url: imageData.data,
-                    type: imageData.type
-                });
+
                 
                 // 設置圖片源並顯示
                 previewImage.src = imageData.data;
                 previewImage.onload = function() {
-                    console.log('圖片載入成功:', imageData.name);
+
                     preview.style.display = 'flex';
                     previewImage.style.display = 'block';
                 };
@@ -2747,19 +2841,33 @@
                     return null;
                 }
 
-                // 設定安全的預設選項
+                // 設定安全的預設選項，包含中文本地化
                 const safeOptions = {
+                    locale: 'zh_tw',  // 預設使用中文
                     ...options
                 };
 
-                // 檢查 locale 是否可用
-                if (safeOptions.locale) {
-                    if (safeOptions.locale === 'zh_tw') {
-                        // 檢查中文 locale 是否可用
-                        if (!flatpickr.l10ns || !flatpickr.l10ns.zh_tw) {
-                            console.warn('中文 locale 不可用，改用英文');
-                            delete safeOptions.locale;
-                        }
+                // 如果指定了中文locale，確保中文設置可用
+                if (safeOptions.locale === 'zh_tw') {
+                    // 檢查中文 locale 是否已載入
+                    if (!flatpickr.l10ns || !flatpickr.l10ns.zh_tw) {
+                        console.warn('中文 locale 尚未載入，等待載入...');
+                        // 等待中文本地化載入完成
+                        let retryCount = 0;
+                        const waitForLocale = () => {
+                            if (flatpickr.l10ns && flatpickr.l10ns.zh_tw) {
+                                return flatpickr(selector, safeOptions);
+                            } else if (retryCount < 10) {
+                                retryCount++;
+                                setTimeout(waitForLocale, 100);
+                                return null;
+                            } else {
+                                console.warn('等待中文 locale 超時，使用英文');
+                                delete safeOptions.locale;
+                                return flatpickr(selector, safeOptions);
+                            }
+                        };
+                        return waitForLocale();
                     }
                 }
 
@@ -2790,14 +2898,9 @@
                 orderDetailsListener = null;
             }
             
-            // 清理其他監聽器
-            if (ordersUnsubscribe) {
-                ordersUnsubscribe();
-            }
-            
-            // 清理會員監聽器
-            if (membersUnsubscribe) {
-                membersUnsubscribe();
+            // 清理統一管理器監聽器
+            if (typeof listManager !== 'undefined') {
+                listManager.stopAllListening();
             }
             
             // 清理圖表資源
@@ -2835,6 +2938,24 @@
             // 如果切換到首頁，初始化圖表（防重複初始化已在 fastInit 中處理）
             if (functionName === 'home') {
                 fastChartManager.fastInit();
+            }
+            
+            // 如果切換到訂單管理，初始化訂單列表
+            if (functionName === 'order') {
+
+                
+                // 延遲初始化，確保DOM載入完成
+                setTimeout(() => {
+                    initializeOrderManagement();
+                }, 50);
+            }
+            
+            // 如果切換到會員管理，重新初始化會員列表監聽
+            if (functionName === 'user') {
+                setTimeout(() => {
+
+                    initializeMembersList();
+                }, 100);
             }
 
             // 只在非首頁時更新 URL hash
@@ -2886,7 +3007,7 @@
                     try {
                         const memberDoc = await db.collection('members').doc(memberPhone).get();
                         memberData = memberDoc.exists ? memberDoc.data() : null;
-            } catch (error) {
+                    } catch (error) {
                         console.error('Error fetching member data:', error);
                     }
                 }
@@ -2929,17 +3050,7 @@
                 // 檢查不同類型的圖片
                 const images = [];
                 
-                // 調試：輸出完整的訂單對象
-                console.log('=== 完整訂單對象 ===');
-                console.log(order);
-                console.log('=== 圖片字段檢查 ===');
-                console.log('wechatQrCodeURL:', order.wechatQrCodeURL);
-                console.log('qrCodeURL:', order.qrCodeURL);
-                console.log('taobaoImageURL:', order.taobaoImageURL);
-                console.log('alibabaImageURL:', order.alibabaImageURL);
-                console.log('othersImageURL:', order.othersImageURL);
-                console.log('images:', order.images);
-                console.log('===');
+
                 
                 // 驗證URL是否有效的輔助函數
                 const isValidImageUrl = (url) => {
@@ -3075,7 +3186,7 @@
 
                 // 顯示模態框（只在第一次顯示時需要）
                 if (document.getElementById('orderModal').style.display !== 'block') {
-                document.getElementById('orderModal').style.display = 'block';
+                    document.getElementById('orderModal').style.display = 'block';
                 }
             } catch (error) {
                 console.error('Error updating order details display:', error);
@@ -3136,13 +3247,89 @@
             closeModal('editMemberModal');
         }
 
+        // 刪除會員功能
+        async function deleteMember() {
+            const phoneInput = document.getElementById('editMemberPhone');
+            const statusInput = document.getElementById('editMemberStatus');
+            
+            if (!phoneInput || !statusInput) {
+                alert('無法獲取會員資料');
+                return;
+            }
+
+            const phone = phoneInput.value;
+            const status = statusInput.value;
+
+            // 雙重確認：只允許刪除未審核會員
+            if (status !== 'pending') {
+                alert('只能刪除未審核的會員');
+                return;
+            }
+
+            // 使用自定義確認模態框
+            const title = '正在刪除';
+            const message = `${phone}`;
+            
+            showConfirmModal(title, message, async () => {
+                try {
+                    // 執行刪除操作
+                    await db.collection('members').doc(phone).delete();
+                    
+                    // 顯示成功訊息
+                    showSuccessToast(`會員 ${phone} 已成功刪除`);
+                    
+                    // 關閉編輯模態框
+                    closeEditMemberModal();
+                    
+                    // 刷新會員列表
+                    if (typeof loadMembers === 'function') {
+                        loadMembers();
+                    }
+                    
+                } catch (error) {
+                    console.error('刪除會員失敗:', error);
+                    let errorMessage = '刪除會員失敗';
+                    
+                    if (error.code === 'permission-denied') {
+                        errorMessage = '權限不足：無法刪除會員資料';
+                    } else if (error.code === 'not-found') {
+                        errorMessage = '會員不存在或已被刪除';
+                    } else if (error.code === 'unavailable') {
+                        errorMessage = '網路連線異常，請稍後再試';
+                    } else if (error.message) {
+                        errorMessage = `刪除失敗：${error.message}`;
+                    } else {
+                        errorMessage = '刪除會員失敗，請稍後再試';
+                    }
+                    
+                    alert(errorMessage);
+                }
+            }, '是的', 'danger');
+        }
+
         // 確認模態框管理
         let confirmCallback = null;
 
-        function showConfirmModal(title, message, callback, buttonText = '確認') {
+        function showConfirmModal(title, message, callback, buttonText = '確認', buttonStyle = 'primary') {
             document.getElementById('confirmTitle').textContent = title;
             document.getElementById('confirmMessage').textContent = message;
             document.getElementById('confirmButton').textContent = buttonText;
+            
+            // 設置按鈕樣式
+            const confirmButton = document.getElementById('confirmButton');
+            confirmButton.className = `confirm-btn confirm-btn-${buttonStyle}`;
+            
+            // 設置圖標樣式和內容
+            const confirmIcon = document.querySelector('.confirm-icon');
+            confirmIcon.className = `confirm-icon ${buttonStyle === 'danger' ? 'danger' : ''}`;
+            
+            // 根據類型設置圖標
+            if (buttonStyle === 'danger') {
+                confirmIcon.textContent = '🗑️';
+            } else {
+                confirmIcon.textContent = '⚠️';
+            }
+            
             confirmCallback = callback;
             document.getElementById('confirmModal').style.display = 'block';
         }
@@ -3672,61 +3859,302 @@
         let currentOrderId = null;
         let orderDetailsListener = null; // 訂單詳情實時監聽器
 
-        // Firestore 會員即時監聽
+        // 統一監聽管理器
+        class ListManagerSystem {
+            constructor() {
+                this.listeners = new Map(); // 存儲所有監聽器
+                this.searchStates = new Map(); // 存儲搜索狀態
+                this.renderFunctions = new Map(); // 存儲渲染函數
+                this.domConfigs = new Map(); // 存儲DOM配置
+                
+    
+            }
+
+            // 註冊列表管理配置
+            registerList(listId, config) {
+                this.domConfigs.set(listId, {
+                    listElement: config.listElementId,
+                    filterElement: config.filterElementId,
+                    collection: config.collection,
+                    primaryOrderBy: config.primaryOrderBy,
+                    fallbackOrderBy: config.fallbackOrderBy,
+                    emptyMessage: config.emptyMessage || '暫無資料',
+                    loadingMessage: config.loadingMessage || '載入中...',
+                    errorMessage: config.errorMessage || '載入失敗，請稍後重試',
+                    columns: config.columns || 7
+                });
+                
+                this.renderFunctions.set(listId, config.renderFunction);
+                this.searchStates.set(listId, '');
+                
+    
+            }
+
+            // 統一的DOM檢查
+            checkDomReady(listId) {
+                const config = this.domConfigs.get(listId);
+                if (!config) return false;
+
+                const listElement = document.getElementById(config.listElement);
+                const filterElement = config.filterElement ? document.getElementById(config.filterElement) : true;
+
+                const isReady = !!(listElement && filterElement);
+                
+                if (!isReady) {
+                    console.warn(`⚠️ ${listId} DOM尚未準備好:`, {
+                        listElement: !!listElement,
+                        filterElement: !!filterElement
+                    });
+                }
+
+                return isReady;
+            }
+
+            // 統一的監聽啟動
+            startListening(listId, searchQuery = '') {
+                const config = this.domConfigs.get(listId);
+                if (!config) {
+                    console.error(`❌ 未找到 ${listId} 的配置`);
+                    return false;
+                }
+
+                if (!this.checkDomReady(listId)) {
+                    console.error(`❌ ${listId} DOM未準備好，無法啟動監聽`);
+                    return false;
+                }
+
+                // 清除舊監聽器
+                this.stopListening(listId);
+
+                // 更新搜索狀態
+                this.searchStates.set(listId, searchQuery);
+
+                // 顯示載入狀態
+                const listElement = document.getElementById(config.listElement);
+                listElement.innerHTML = `<tr><td colspan="${config.columns}" style="text-align: center; padding: 20px;">${config.loadingMessage}</td></tr>`;
+
+                // 構建查詢
+                let query = this.buildQuery(listId, searchQuery);
+
+
+
+                // 設置監聽器
+                const unsubscribe = query.onSnapshot(async snapshot => {
+    
+                    const renderFunction = this.renderFunctions.get(listId);
+                    if (renderFunction) {
+                        if (listId === 'orders') {
+                            // 訂單需要特殊處理（去重）
+                            const uniqueOrders = {};
+                            snapshot.docs.forEach(doc => {
+                                uniqueOrders[doc.id] = doc.data();
+                            });
+                            await renderFunction(uniqueOrders);
+                        } else {
+                            // 其他列表直接傳遞snapshot
+                            renderFunction(snapshot);
+                        }
+                    }
+                }, error => {
+                    this.handleListeningError(listId, error, searchQuery);
+                });
+
+                this.listeners.set(listId, unsubscribe);
+                return true;
+            }
+
+            // 構建查詢
+            buildQuery(listId, searchQuery) {
+                const config = this.domConfigs.get(listId);
+                
+                if (listId === 'members' && searchQuery && searchQuery.trim() !== '') {
+                    // 會員搜索查詢
+                    const searchText = searchQuery.toLowerCase();
+                    return db.collection(config.collection)
+                        .where('phone', '>=', searchText)
+                        .where('phone', '<=', searchText + '\uf8ff')
+                        .orderBy('phone');
+                } else if (listId === 'orders') {
+                    // 訂單查詢，檢查狀態篩選
+                    const statusFilter = document.getElementById('statusFilter');
+                    if (statusFilter && statusFilter.value !== 'all') {
+                        return db.collection(config.collection)
+                            .where('status', '==', statusFilter.value)
+                            .orderBy(config.primaryOrderBy, 'desc');
+                    } else {
+                        return db.collection(config.collection).orderBy(config.primaryOrderBy, 'desc');
+                    }
+                } else {
+                    // 預設查詢
+                    return db.collection(config.collection).orderBy(config.primaryOrderBy, 'desc');
+                }
+            }
+
+            // 統一的錯誤處理
+            handleListeningError(listId, error, searchQuery) {
+                console.error(`Error listening to ${listId}:`, error);
+                const config = this.domConfigs.get(listId);
+                const listElement = document.getElementById(config.listElement);
+                
+                if (error.code === 'failed-precondition' || error.message.includes('index')) {
+                    console.warn(`${listId} 索引可能不存在，使用降級查詢...`);
+                    
+                    // 構建降級查詢
+                    let fallbackQuery;
+                    if (listId === 'members' && searchQuery && searchQuery.trim() !== '') {
+                        const searchText = searchQuery.toLowerCase();
+                        fallbackQuery = db.collection(config.collection)
+                            .where('phone', '>=', searchText)
+                            .where('phone', '<=', searchText + '\uf8ff')
+                            .orderBy('phone');
+                    } else {
+                        fallbackQuery = db.collection(config.collection).orderBy(config.fallbackOrderBy, 'desc');
+                    }
+                    
+                    const fallbackUnsubscribe = fallbackQuery.onSnapshot(async snapshot => {
+                        const renderFunction = this.renderFunctions.get(listId);
+                        if (renderFunction) {
+                            if (listId === 'orders') {
+                                // 訂單需要特殊處理（去重）
+                                const uniqueOrders = {};
+                                snapshot.docs.forEach(doc => {
+                                    uniqueOrders[doc.id] = doc.data();
+                                });
+                                await renderFunction(uniqueOrders);
+                            } else {
+                                // 其他列表直接傳遞snapshot
+                                renderFunction(snapshot);
+                            }
+                        }
+                    }, fallbackError => {
+                        console.error(`${listId} 降級查詢也失敗:`, fallbackError);
+                        if (listElement) {
+                            listElement.innerHTML = `<tr><td colspan="${config.columns}" style="text-align: center; padding: 20px; color: red;">${config.errorMessage}</td></tr>`;
+                        }
+                    });
+                    
+                    // 更新監聽器
+                    this.listeners.set(listId, fallbackUnsubscribe);
+                } else {
+                    // 其他錯誤
+                    if (listElement) {
+                        listElement.innerHTML = `<tr><td colspan="${config.columns}" style="text-align: center; padding: 20px; color: red;">網路連線異常，請檢查網路後重試</td></tr>`;
+                    }
+                }
+            }
+
+            // 停止監聽
+            stopListening(listId) {
+                const unsubscribe = this.listeners.get(listId);
+                if (unsubscribe) {
+                    unsubscribe();
+                    this.listeners.delete(listId);
+
+                }
+            }
+
+            // 停止所有監聽
+            stopAllListening() {
+                for (const [listId] of this.listeners) {
+                    this.stopListening(listId);
+                }
+
+            }
+
+            // 獲取搜索狀態
+            getSearchState(listId) {
+                return this.searchStates.get(listId) || '';
+            }
+
+            // 診斷列表狀態
+            diagnoseList(listId) {
+                const config = this.domConfigs.get(listId);
+                if (!config) {
+                    console.error(`❌ 未找到 ${listId} 的配置`);
+                    return null;
+                }
+
+                const listElement = document.getElementById(config.listElement);
+                const filterElement = config.filterElement ? document.getElementById(config.filterElement) : true;
+                const isListening = this.listeners.has(listId);
+                const searchState = this.searchStates.get(listId);
+
+                const diagnosis = {
+                    listId,
+                    domReady: !!(listElement && filterElement),
+                    isListening,
+                    searchState,
+                    listElement: !!listElement,
+                    filterElement: !!filterElement
+                };
+
+
+                return diagnosis;
+            }
+        }
+
+        // 創建全局統一管理器實例
+        const listManager = new ListManagerSystem();
+
+        // 兼容性變數（保持舊代碼相容）
         let membersUnsubscribe = null;
+        let ordersUnsubscribe = null;
         let currentMemberSearch = ''; // 目前的搜索關鍵字
 
-        // 初始化會員列表（改為實時監聽版本）
+        // 初始化列表配置並註冊到統一管理器
+        function initializeListConfigs() {
+            // 註冊會員列表配置
+            listManager.registerList('members', {
+                listElementId: 'membersList',
+                filterElementId: 'memberSearch',
+                collection: 'members',
+                primaryOrderBy: 'lastUpdated',
+                fallbackOrderBy: 'joinDate',
+                emptyMessage: '暫無會員資料',
+                loadingMessage: '載入中...',
+                errorMessage: '載入會員列表失敗，請稍後重試',
+                columns: 8,
+                renderFunction: renderMembersList
+            });
+
+            // 註冊訂單列表配置
+            listManager.registerList('orders', {
+                listElementId: 'ordersList',
+                filterElementId: 'statusFilter',
+                collection: 'orders',
+                primaryOrderBy: 'lastUpdated',
+                fallbackOrderBy: 'createdAt',  // 修正：使用createdAt而不是orderDate
+                emptyMessage: '暫無訂單資料',
+                loadingMessage: '載入中...',
+                errorMessage: '載入訂單列表失敗，請稍後重試',
+                columns: 7,
+                renderFunction: renderOrdersList
+            });
+
+
+        }
+
+        // 載入會員列表（改為使用統一管理器）
+        function loadMembers() {
+            initializeMembersList();
+        }
+
+        // 初始化會員列表（改為使用統一管理器）
         function initializeMembersList() {
             // 重置搜索狀態
             currentMemberSearch = '';
-            document.getElementById('memberSearch').value = '';
-            
-            // 開始監聽會員資料
-            listenMembersList();
-        }
-
-        // 會員列表實時監聽函數
-        function listenMembersList() {
-            // 先移除舊的監聽
-            if (membersUnsubscribe) membersUnsubscribe();
-            
-            // 先顯示載入狀態
-            const membersList = document.getElementById('membersList');
-            membersList.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">載入中...</td></tr>';
-            
-            // 根據是否有搜索關鍵字決定查詢方式
-            let query;
-            if (currentMemberSearch && currentMemberSearch.trim() !== '') {
-                // 有搜索關鍵字時使用範圍查詢
-                const searchText = currentMemberSearch.toLowerCase();
-                query = db.collection('members')
-                    .where('phone', '>=', searchText)
-                    .where('phone', '<=', searchText + '\uf8ff')
-                    .orderBy('phone');
-            } else {
-                // 無搜索關鍵字時顯示所有會員，優先顯示最近更新的會員
-                query = db.collection('members').orderBy('lastUpdated', 'desc');
+            const searchInput = document.getElementById('memberSearch');
+            if (searchInput) {
+                searchInput.value = '';
             }
             
-            membersUnsubscribe = query.onSnapshot(snapshot => {
-                renderMembersList(snapshot);
-            }, error => {
-                console.error('Error listening to members:', error);
-                // 如果是索引錯誤，嘗試使用降級查詢
-                if (error.code === 'failed-precondition' || error.message.includes('index')) {
-                    console.warn('lastUpdated 索引可能不存在，使用降級查詢...');
-                    const fallbackQuery = db.collection('members').orderBy('joinDate', 'desc');
-                    membersUnsubscribe = fallbackQuery.onSnapshot(snapshot => {
-                        renderMembersList(snapshot);
-                    }, fallbackError => {
-                        console.error('降級查詢也失敗:', fallbackError);
-                        membersList.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: red;">載入會員列表失敗</td></tr>';
-                    });
-                } else {
-                    membersList.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: red;">載入會員列表失敗</td></tr>';
-                }
-            });
+            // 使用統一管理器開始監聽會員資料
+            listManager.startListening('members');
+        }
+
+        // 會員列表實時監聽函數（改為使用統一管理器）
+        function listenMembersList() {
+            listManager.startListening('members', currentMemberSearch);
         }
 
         // 渲染會員列表
@@ -3784,13 +4212,13 @@
             });
         }
 
-        // 搜尋會員（改為與實時監聽配合）
+        // 搜尋會員（改為使用統一管理器）
         function searchMembers() {
             const searchText = document.getElementById('memberSearch').value.toLowerCase();
             // 更新目前的搜索關鍵字
             currentMemberSearch = searchText;
-            // 重新開始監聽（會根據新的搜索關鍵字進行查詢）
-            listenMembersList();
+            // 使用統一管理器重新開始監聽
+            listManager.startListening('members', currentMemberSearch);
         }
 
 
@@ -3943,6 +4371,8 @@
             // 使用 UI 管理器初始化模態框
             memberData.phone = phone; // 確保 phone 資料存在
             if (EditModalManager.initializeModal(memberData)) {
+                // 顯示會員電話號碼在標題中
+                document.getElementById('editMemberPhoneDisplay').textContent = `(${phone})`;
                 document.getElementById('editMemberModal').style.display = 'block';
             } else {
                 alert('載入會員資料失敗');
@@ -4054,41 +4484,83 @@
         }
 
         // Firestore 訂單即時監聽
-        let ordersUnsubscribe = null;
-        function listenOrdersList() {
-            // 先移除舊的監聽
-            if (ordersUnsubscribe) ordersUnsubscribe();
-            // 優先顯示最近更新的訂單
+        // 統一的訂單管理初始化函數
+        function initializeOrderManagement() {
+            const ordersList = document.getElementById('ordersList');
             const statusFilter = document.getElementById('statusFilter');
-            let query;
             
-            if (statusFilter && statusFilter.value !== 'all') {
-                // 有狀態篩選時，先按狀態篩選再按時間排序（需要複合索引）
-                query = db.collection('orders')
-                    .where('status', '==', statusFilter.value)
-                    .orderBy('lastUpdated', 'desc');
-            } else {
-                // 無狀態篩選時，直接按時間排序
-                query = db.collection('orders').orderBy('lastUpdated', 'desc');
+            if (!ordersList || !statusFilter) {
+                console.warn('⚠️ 訂單管理DOM元素未就緒，延遲重試...');
+                setTimeout(initializeOrderManagement, 100);
+                return;
             }
-            ordersUnsubscribe = query.onSnapshot(async snapshot => {
-                // 先用物件根據 id 去重
-                const uniqueOrders = {};
-                snapshot.docs.forEach(doc => {
-                    uniqueOrders[doc.id] = doc.data();
-                });
-                await renderOrdersList(uniqueOrders);
-            });
+            
+            
+            
+            // 確保統一管理器已初始化
+            if (typeof listManager === 'undefined') {
+                initializeListConfigs();
+            }
+            
+            // 初始化狀態篩選器
+            initializeStatusFilter();
+            
+            // 開始監聽訂單列表
+            listManager.startListening('orders');
+        }
+
+        // 訂單列表監聽函數（相容性保留）
+        function listenOrdersList() {
+
+            initializeOrderManagement();
         }
 
         async function renderOrdersList(uniqueOrders) {
             const ordersList = document.getElementById('ordersList');
+            
+            if (!ordersList) {
+                console.error('❌ renderOrdersList: ordersList元素不存在');
+                return;
+            }
+            
+
             ordersList.innerHTML = '';
             
+            // 如果沒有訂單數據
+            if (Object.keys(uniqueOrders).length === 0) {
+                ordersList.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #666;">暫無訂單資料</td></tr>';
+                return;
+            }
+            
             try {
+                // 批量獲取所有需要的會員資料
+                const phoneNumbers = [...new Set(Object.values(uniqueOrders).map(order => order.phone).filter(phone => phone))];
+                const memberDataMap = new Map();
+                
+                if (phoneNumbers.length > 0) {
+                    try {
+                        // 使用 Promise.all 並行獲取會員資料
+                        const memberPromises = phoneNumbers.map(phone => 
+                            db.collection('members').doc(phone).get()
+                        );
+                        const memberDocs = await Promise.all(memberPromises);
+                        
+                        memberDocs.forEach((doc, index) => {
+                            if (doc.exists) {
+                                memberDataMap.set(phoneNumbers[index], doc.data());
+                            }
+                        });
+                    } catch (error) {
+                        console.warn('批量載入會員資料失敗:', error);
+                    }
+                }
+                
+                // 渲染訂單列表
                 for (const [id, order] of Object.entries(uniqueOrders)) {
-                    // 計算最終金額
-                    const finalAmount = await calculateFinalAmount(order.amount);
+                    const memberData = memberDataMap.get(order.phone) || null;
+                    
+                    // 計算最終金額（使用會員等級）
+                    const finalAmount = await calculateFinalAmount(order.amount, memberData?.level || 'basic', memberData);
                     
                     const row = document.createElement('tr');
                     let actionButtons = '';
@@ -4117,15 +4589,54 @@
             }
         }
 
-        // 狀態過濾功能，切換時重新監聽（異步）
-        setTimeout(() => {
+        // 手動刷新訂單列表
+        function refreshOrdersList() {
+
+            initializeOrderManagement();
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // 狀態過濾功能，切換時重新監聽（改進版）
+        function initializeStatusFilter() {
             const statusFilter = document.getElementById('statusFilter');
             if (statusFilter) {
-                statusFilter.addEventListener('change', function() {
-                    listenOrdersList();
-                });
+                // 移除舊的事件監聽器（如果存在）
+                statusFilter.removeEventListener('change', statusFilterHandler);
+                // 添加新的事件監聽器
+                statusFilter.addEventListener('change', statusFilterHandler);
+
             }
-        }, 0);
+        }
+
+        // 狀態篩選處理函數（改為使用統一管理器）
+        function statusFilterHandler() {
+            initializeOrderManagement();
+        }
+
+        // 注意：狀態篩選器將在initializeOrderManagement函數中統一初始化
+
+
 
         // 設定快取
         let cachedSettings = null;
@@ -4235,12 +4746,12 @@
                 // 執行所有更新
                 if (memberUpdatePromises.length > 0) {
                     await Promise.all(memberUpdatePromises);
-                    console.log(`已初始化 ${memberUpdatePromises.length} 筆會員的 lastUpdated 字段`);
+    
                 }
                 
                 if (orderUpdatePromises.length > 0) {
                     await Promise.all(orderUpdatePromises);
-                    console.log(`已初始化 ${orderUpdatePromises.length} 筆訂單的 lastUpdated 字段`);
+    
                 }
                 
             } catch (error) {
@@ -4300,7 +4811,7 @@
                 
                 <div class="order-info-grid">
                     <div class="info-card" style="background: linear-gradient(135deg, #f8fafc, #e2e8f0); border: 2px solid var(--primary-color); position: relative;">
-                                                <div class="info-value" style="display: -webkit-box; display: -webkit-flex; display: -ms-flexbox; display: flex; -webkit-box-orient: vertical; -webkit-box-direction: normal; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -webkit-justify-content: center; -ms-flex-pack: center; justify-content: center; text-align: center; padding: 10px 0;">
+                        <div class="info-value" style="display: flex; flex-direction: column; justify-content: center; text-align: center; padding: 10px 0;">
                             <div style="font-size: 18px; font-weight: 500; color: var(--text-color);" id="modalMemberLevel">-</div>
                             <div style="font-size: 24px; font-weight: 600; color: var(--primary-color); margin-top: 8px;" id="modalMemberPhone">-</div>
                         </div>
@@ -4398,7 +4909,7 @@
             <form id="editMemberForm" class="member-form">
                 <input type="hidden" id="editMemberPhone">
                 <div class="form-group">
-                    <label for="editMemberLevel">會員等級</label>
+                    <label for="editMemberLevel">會員等級 <span id="editMemberPhoneDisplay" style="font-size: 12px; color: #666; font-weight: normal; margin-left: 8px;"></span></label>
                     <select id="editMemberLevel" onchange="handleMemberLevelChange(this.value)">
                         <option value="basic">基礎會員</option>
                         <option value="tenThousand">滿萬會員</option>
@@ -4426,6 +4937,12 @@
                 <div class="button-group">
                     <button type="submit" class="btn-primary">保存</button>
                     <button type="button" onclick="closeEditMemberModal()">取消</button>
+                </div>
+                <!-- 刪除按鈕 - 僅未審核狀態顯示 -->
+                <div class="delete-button-container" id="deleteMemberContainer" style="display: none;">
+                    <button type="button" class="delete-member-btn" onclick="deleteMember()">
+                        🗑️ 刪除會員
+                    </button>
                 </div>
             </form>
         </div>
@@ -4569,7 +5086,8 @@
                     status: document.getElementById('editMemberStatus'),
                     expiry: document.getElementById('editMemberExpiry'),
                     remark: document.getElementById('editMemberRemark'),
-                    remarkGroup: document.getElementById('remarkGroup')
+                    remarkGroup: document.getElementById('remarkGroup'),
+                    deleteContainer: document.getElementById('deleteMemberContainer')
                 };
                 this.isUpdating = false; // 防止循環更新
             }
@@ -4582,6 +5100,7 @@
                     expiryRequired: status === 'active' && level !== 'basic',
                     remarkVisible: status === 'suspended',
                     remarkRequired: status === 'suspended',
+                    deleteVisible: status === 'pending', // 只有未審核狀態才顯示刪除按鈕
                     forcedLevel: (status === 'pending' || status === 'suspended') ? 'basic' : level,
                     forcedExpiry: (status === 'pending' || status === 'suspended' || level === 'basic') ? '' : null
                 };
@@ -4612,8 +5131,8 @@
                     }
 
                     // 2. 可編輯性控制
-                    this.setFieldEditable(this.elements.level, rules.levelEditable, '未審核或暫停會員僅能為基礎會員');
-                    this.setFieldEditable(this.elements.expiry, rules.expiryEditable, '未審核或暫停會員無到期日');
+                    this.setFieldEditable(this.elements.level, rules.levelEditable);
+                    this.setFieldEditable(this.elements.expiry, rules.expiryEditable);
 
                     // 3. 必填狀態控制
                     this.setFieldRequired(this.elements.expiry, rules.expiryRequired);
@@ -4621,9 +5140,10 @@
 
                     // 4. 顯示/隱藏控制
                     this.setGroupVisible(this.elements.remarkGroup, rules.remarkVisible);
+                    this.setGroupVisible(this.elements.deleteContainer, rules.deleteVisible);
 
                     // 5. 標籤更新
-                    this.updateLabels(status, level);
+                    this.updateLabels();
 
                 } finally {
                     this.isUpdating = false;
@@ -4631,13 +5151,13 @@
             }
 
             // 設置欄位可編輯性
-            setFieldEditable(element, editable, disabledHint = '') {
+            setFieldEditable(element, editable) {
                 if (!element) return;
                 
                 element.disabled = !editable;
                 element.style.backgroundColor = editable ? '' : '#f5f5f5';
                 element.style.color = editable ? '' : '#999';
-                element.title = editable ? '' : disabledHint;
+                element.title = '';
             }
 
             // 設置欄位必填狀態
@@ -4658,17 +5178,11 @@
             }
 
             // 更新標籤文字
-            updateLabels(status, level) {
+            updateLabels() {
                 const expiryLabel = this.elements.expiry?.previousElementSibling;
                 if (!expiryLabel) return;
 
-                if (status === 'pending' || status === 'suspended') {
-                    expiryLabel.innerHTML = '到期日期<span style="color: #999; font-size: 12px;">(未審核或暫停會員無到期日)</span>';
-                } else if (level === 'basic') {
-                    expiryLabel.innerHTML = '到期日期<span style="color: #666; font-size: 12px;">(基礎會員可不填)</span>';
-                } else {
-                    expiryLabel.textContent = '到期日期';
-                }
+                expiryLabel.textContent = '到期日期';
             }
 
             // 清理相關欄位值
@@ -4891,7 +5405,15 @@
                 return;
             }
             
-            const enteredPassword = event.target.value;
+            // 確保只允許數字輸入
+            const originalValue = event.target.value;
+            const filteredValue = originalValue.replace(/[^0-9]/g, '');
+            
+            if (originalValue !== filteredValue) {
+                event.target.value = filteredValue;
+            }
+            
+            const enteredPassword = filteredValue;
             
             // 當輸入長度達到密碼長度時自動驗證
             if (enteredPassword.length === ADMIN_PASSWORD.length) {
@@ -5059,6 +5581,25 @@
             isAuthenticated = false;
             sessionStorage.removeItem('adminAuthenticated');
             
+            // 清理統一管理器的所有監聽器
+            if (typeof listManager !== 'undefined') {
+                listManager.stopAllListening();
+            }
+            
+            // 清理舊版監聽器（兼容性）
+            if (membersUnsubscribe) {
+                membersUnsubscribe();
+                membersUnsubscribe = null;
+            }
+            if (ordersUnsubscribe) {
+                ordersUnsubscribe();
+                ordersUnsubscribe = null;
+            }
+            if (orderDetailsListener) {
+                orderDetailsListener();
+                orderDetailsListener = null;
+            }
+            
             // 清理定時器
             if (lockoutTimer) {
                 clearTimeout(lockoutTimer);
@@ -5072,37 +5613,79 @@
             showLoginPage();
         }
 
-        // 設置頁面載入邏輯
-        window.onload = async function() {
-            // 首先檢查認證狀態
-            const isAuth = await checkAuthenticationStatus();
-            if (!isAuth) {
-                return; // 如果未認證，停止載入主要內容
+        // 載入狀態管理
+        function showLoadingStatus(message) {
+            let loadingDiv = document.getElementById('globalLoadingStatus');
+            if (!loadingDiv) {
+                loadingDiv = document.createElement('div');
+                loadingDiv.id = 'globalLoadingStatus';
+                loadingDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: linear-gradient(135deg, #3b82f6, #2563eb);
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                    z-index: 8888;
+                    font-weight: 500;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                    opacity: 0;
+                `;
+                document.body.appendChild(loadingDiv);
             }
             
-            // 如果已認證，執行主要內容初始化
-            initializeAfterLogin();
+            loadingDiv.textContent = message;
+            loadingDiv.style.opacity = '1';
         }
+
+        function hideLoadingStatus() {
+            const loadingDiv = document.getElementById('globalLoadingStatus');
+            if (loadingDiv) {
+                loadingDiv.style.opacity = '0';
+                setTimeout(() => {
+                    if (loadingDiv.parentNode) {
+                        loadingDiv.parentNode.removeChild(loadingDiv);
+                    }
+                }, 300);
+            }
+        }
+
+        // 設置頁面載入邏輯（移除重複的認證檢查，統一使用DOMContentLoaded）
 
         // 創建在登錄後執行的初始化函數
         function initializeAfterLogin() {
             try {
+    
+                
+                // 初始化統一列表管理器配置
+                initializeListConfigs();
+                
                 // 立即顯示首頁
                 handleHashChange();
-                window.addEventListener('hashchange', handleHashChange);
                 
                 // 異步初始化各個組件（不阻塞）
                 setTimeout(() => {
-                    initializeMembersList();
-                }, 0);
-                
-                setTimeout(() => {
-                    listenOrdersList();
-                }, 0);
-                
-                setTimeout(() => {
+    
                     initializeDashboard();
                 }, 0);
+                
+                setTimeout(() => {
+
+                    initializeMembersList();
+                }, 100);
+                
+                // 只有在首次載入時初始化訂單監聽，切換頁面時由switchFunction處理
+                setTimeout(() => {
+                    const currentHash = window.location.hash.replace('#', '');
+                    if (currentHash === 'order') {
+    
+                        initializeOrderManagement();
+                    }
+                }, 200);
                 
                 // 延遲執行會員到期檢查，避免影響載入速度
                 setTimeout(() => {
@@ -5138,9 +5721,13 @@
             }
         });
 
-        // 頁面載入時檢查認證狀態
+        // 頁面載入時檢查認證狀態並初始化
         document.addEventListener('DOMContentLoaded', async function() {
-            await checkAuthenticationStatus();
+            const isAuth = await checkAuthenticationStatus();
+            if (isAuth) {
+                // 如果已認證，執行主要內容初始化
+                initializeAfterLogin();
+            }
         });
     </script>
 </body>
