@@ -1,0 +1,78 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 會員集合規則
+    match /members/{memberId} {
+      // 允許讀取：所有人可以讀取會員資料（用於驗證登入）
+      allow read: if true;
+      
+      // 允許創建：任何人都可以創建新會員（註冊功能）
+      allow create: if true;
+      
+      // 允許更新：限制只能更新特定欄位
+      allow update: if resource.data.phone == memberId
+                    && (!('phone' in request.resource.data) || request.resource.data.phone == memberId)
+                    && (!('joinDate' in request.resource.data) || request.resource.data.joinDate == resource.data.joinDate);
+      
+      // 不允許刪除會員資料
+      allow delete: if false;
+    }
+    
+    // 訂單集合規則
+    match /orders/{orderId} {
+      // 允許讀取：所有人可以讀取訂單（管理員和用戶都需要）
+      allow read: if true;
+      
+      // 允許創建：任何人都可以創建訂單
+      allow create: if true;
+      
+      // 允許更新：可以更新訂單狀態和相關資訊
+      allow update: if true;
+      
+      // 不允許刪除訂單
+      allow delete: if false;
+    }
+    
+    // 系統設定集合規則
+    match /settings/{settingId} {
+      // 允許讀取：所有人可以讀取設定（用於計算價格）
+      allow read: if true;
+      
+      // 允許寫入：所有人可以寫入設定（簡化管理）
+      allow write: if true;
+    }
+    
+    // 錯誤日誌集合規則
+    match /error_logs/{logId} {
+      // 不允許讀取錯誤日誌
+      allow read: if false;
+      
+      // 允許創建錯誤日誌
+      allow create: if true;
+      
+      // 不允許更新或刪除錯誤日誌
+      allow update, delete: if false;
+    }
+    
+    // 安全記錄集合規則（用於後台管理系統登錄安全）
+    match /security/{deviceId} {
+      // 允許讀取：用於檢查設備鎖定狀態
+      allow read: if true;
+      
+      // 允許創建：記錄新的登錄失敗嘗試
+      allow create: if true;
+      
+      // 允許更新：更新登錄嘗試次數和鎖定狀態
+      allow update: if true;
+      
+      // 允許刪除：登錄成功時清除安全記錄
+      allow delete: if true;
+    }
+    
+    // 其他集合預設拒絕所有操作
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 
