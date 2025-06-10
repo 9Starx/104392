@@ -4,16 +4,150 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>後台管理系統</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+    <!-- 資源預載入和優化 -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://www.gstatic.com">
+    
+    <!-- 預載入關鍵資源 -->
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js">
+    
+    <!-- 預載入 Chart.js - 固定版本避免未來衝突 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" async></script>
+    
+    <!-- 關鍵CSS內聯 -->
+    <style id="critical-css">
+        /* Flatpickr 精簡CSS */
+        .flatpickr-calendar {
+            background: #fff;
+            opacity: 0;
+            display: none;
+            text-align: center;
+            visibility: hidden;
+            padding: 0;
+            direction: ltr;
+            border: 0;
+            font-size: 14px;
+            line-height: 24px;
+            border-radius: 5px;
+            position: absolute;
+            width: 307.875px;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            box-shadow: 1px 0 0 #e6e6e6, -1px 0 0 #e6e6e6, 0 1px 0 #e6e6e6, 0 -1px 0 #e6e6e6, 0 3px 13px rgba(0,0,0,0.08);
+        }
+        
+        .flatpickr-calendar.open,
+        .flatpickr-calendar.inline {
+            opacity: 1;
+            max-height: 640px;
+            visibility: visible;
+        }
+        
+        .flatpickr-calendar.open {
+            display: inline-block;
+            z-index: 99999;
+        }
+    </style>
+    
+    <!-- 延遲載入完整CSS -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"></noscript>
+    
+    <!-- 資源載入器 -->
     <script>
-        // 改進的 Flatpickr 中文本地化載入
+        const SuperLazyLoader = {
+            queue: [],
+            loaded: new Set(),
+            processing: false,
+            
+            // 載入腳本
+            loadScript(src, priority = 1000) {
+                return new Promise((resolve, reject) => {
+                    if (this.loaded.has(src)) {
+                        resolve();
+                        return;
+                    }
+                    this.queue.push({ src, priority, resolve, reject, type: 'script' });
+                    this.processQueue();
+                });
+            },
+            
+            processQueue() {
+                if (this.processing) return;
+                this.processing = true;
+                
+                this.queue.sort((a, b) => a.priority - b.priority);
+                
+                const processNext = () => {
+                    if (this.queue.length === 0) {
+                        this.processing = false;
+                        return;
+                    }
+                    
+                    const item = this.queue.shift();
+                    if (this.loaded.has(item.src)) {
+                        item.resolve();
+                        setTimeout(processNext, 0);
+                        return;
+                    }
+                    
+                    const script = document.createElement('script');
+                    script.src = item.src;
+                    script.onload = () => {
+                        this.loaded.add(item.src);
+                        item.resolve();
+                        setTimeout(processNext, 10);
+                    };
+                    script.onerror = item.reject;
+                    document.head.appendChild(script);
+                };
+                
+                setTimeout(processNext, 0);
+            },
+            
+            async loadFirebase() {
+                try {
+                    await this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js', 1);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
+                    await this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js', 2);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
+                    await this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js', 3);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
+                    let attempts = 0;
+                    while (attempts < 20) {
+                        if (typeof firebase !== 'undefined' && 
+                            typeof firebase.firestore !== 'undefined' && 
+                            typeof firebase.storage !== 'undefined') {
+                            console.info('✅ Firebase 庫載入完成');
+                            return true;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        attempts++;
+                    }
+                    
+                    throw new Error('Firebase 載入超時');
+                } catch (error) {
+                    console.error('❌ Firebase 載入失敗:', error);
+                    throw error;
+                }
+            },
+            
+
+            
+            async loadDatePicker() {
+                await this.loadScript('https://cdn.jsdelivr.net/npm/flatpickr', 200);
+            }
+        };
+    </script>
+    <!-- Flatpickr 中文本地化設置 -->
+    <script>
         (function() {
-            // 自定義中文語言配置
             const zhTWConfig = {
                 weekdays: {
                     shorthand: ['日', '一', '二', '三', '四', '五', '六'],
@@ -37,42 +171,25 @@
                 time_24hr: true
             };
 
-            // 等待 flatpickr 載入完成後設置本地化
             function initializeFlatpickrLocale() {
                 if (typeof flatpickr !== 'undefined') {
                     try {
-                        // 直接設置中文配置
                         if (!flatpickr.l10ns) {
                             flatpickr.l10ns = {};
                         }
                         flatpickr.l10ns.zh_tw = zhTWConfig;
                         flatpickr.localize(zhTWConfig);
-
                     } catch (error) {
                         console.error('❌ Flatpickr 本地化設置錯誤:', error);
                     }
                 } else {
-                    // 如果 flatpickr 還沒載入完成，稍後重試
                     setTimeout(initializeFlatpickrLocale, 50);
                 }
             }
-
-            // 集成到主要的DOMContentLoaded事件中，避免重複監聽器
         })();
     </script>
     <style>
-        /* ===== 企業級代碼品質管理 ===== */
-        /* 版本: v2.3.0 - 模態框響應速度優化 */
-        /* 最後修改: 2024-12-19 */
-        /* 修改內容: 分離模態框顯示與圖片載入，大幅提升響應速度，改用並行載入 */
-        
-        /* ===== 衝突檢測標記 ===== */
-        /* DELETE_MEMBER_BTN_UNIFIED: true */
-        /* GAP_PROPERTY_CLEANED: true */
-        /* DUPLICATE_DEFINITIONS_REMOVED: true */
-        /* IMAGE_LOADING_OPTIMIZED: true */
-        /* TIMEOUT_ERROR_FIXED: true */
-        /* MODAL_RESPONSE_OPTIMIZED: true */
+        /* 企業級樣式系統 v3.0 */
 
         :root {
             --primary-color: #2563eb;
@@ -105,6 +222,67 @@
             line-height: 1.6;
             background-color: var(--bg-light);
             color: var(--text-color);
+            font-display: swap;
+            will-change: scroll-position;
+        }
+        
+        /* 載入畫面 */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-light);
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.2s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        /* 骨架屏動畫 */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-header {
+            height: 60px;
+            margin: 20px;
+            border-radius: 8px;
+        }
+        
+        .skeleton-nav {
+            height: 50px;
+            margin: 20px;
+            border-radius: 8px;
+        }
+        
+        .skeleton-content {
+            flex: 1;
+            margin: 20px;
+            border-radius: 8px;
+        }
+        
+        .loading-text {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--primary-color);
+            font-weight: 500;
+            font-size: 14px;
         }
 
         .container {
@@ -144,15 +322,12 @@
 
         .nav-menu {
             display: flex;
+            gap: 12px;
             margin-bottom: 25px;
             padding: 12px;
             background: white;
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
-        }
-
-        .nav-menu > * + * {
-            margin-left: 12px;
         }
 
         .nav-item {
@@ -186,23 +361,7 @@
             display: block;
         }
 
-        /* ================================================================
-           管理頁面佈局系統 - 統一的頭部和控制項架構
-           
-           架構說明：
-           1. .members-header / .orders-header - 頁面標題與控制項容器
-           2. .members-controls / .filters - 控制項分組容器  
-           3. .admin-input - 通用輸入框樣式類（未來擴展用）
-           4. 響應式設計支援行動裝置
-           5. 無障礙設計考量
-           
-           未來擴展性：
-           - 可輕鬆添加新的管理頁面（如 .reports-header）
-           - 統一的控制項樣式可複用
-           - 響應式設計已預設支援
-        ================================================================ */
-
-        /* === 管理頁面頭部佈局 === */
+        /* 管理頁面佈局 */
         .members-header,
         .orders-header {
             display: flex;
@@ -216,14 +375,12 @@
             margin-bottom: 0;
         }
 
-        /* === 控制項容器 === */
         .members-controls,
         .filters {
             display: flex;
             align-items: center;
+            gap: 12px;
         }
-
-        /* === 表單控制項統一樣式 === */
         .admin-input,
         #memberSearch,
         #statusFilter {
@@ -242,15 +399,12 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
-        /* 無障礙設計支援 */
         .admin-input:focus-visible,
         #memberSearch:focus-visible,
         #statusFilter:focus-visible {
             outline: 2px solid var(--primary-color);
             outline-offset: 2px;
         }
-
-        /* === 搜尋框特定樣式 === */
         #memberSearch {
             width: 250px;
         }
@@ -259,7 +413,6 @@
             color: var(--text-light);
         }
 
-        /* === 下拉選單特定樣式 === */
         #statusFilter {
             background-color: white;
             cursor: pointer;
@@ -270,19 +423,13 @@
             border-color: var(--primary-color);
         }
 
-        /* ================================================================
-        * === 統一響應式設計系統 ===
-        * 集中管理所有斷點和響應式樣式，避免重複定義
-        ================================================================ */
+        /* 響應式設計 */
         
-        /* === 平板和手機共用斷點 (768px) === */
         @media (max-width: 768px) {
-            /* 頁面佈局 */
             .container {
                 padding: 10px;
             }
 
-            /* 導航選單 */
             .nav-menu {
                 flex-direction: column;
             }
@@ -291,8 +438,6 @@
                 width: 100%;
                 text-align: center;
             }
-
-            /* 管理頁面頭部 */
             .members-header,
             .orders-header {
                 flex-direction: column;
@@ -305,7 +450,6 @@
                 justify-content: center;
             }
             
-            /* 表單控制項 */
             #memberSearch {
                 width: 100%;
                 max-width: 300px;
@@ -316,22 +460,17 @@
                 max-width: 200px;
             }
 
-            /* 統計網格 */
             .stats-grid {
                 grid-template-columns: 1fr;
             }
 
-            /* 圖表容器 */
             .chart-container {
                 grid-template-columns: 1fr;
             }
-
-            /* 移動設備模態框內容調整 */
             .modal-content {
                 padding: 15px !important;
             }
 
-            /* 訂單模態框特定樣式 */
             #orderModal .modal-content {
                 padding: 20px !important;
             }
@@ -348,10 +487,6 @@
             .order-info-grid {
                 grid-template-columns: 1fr;
             }
-
-
-
-            /* 會員詳情模態框 */
             #memberDetailsModal .modal-content {
                 padding: 15px !important;
             }
@@ -361,12 +496,10 @@
                 padding-right: 6px;
             }
             
-            /* 滾動條優化 */
             .history-list::-webkit-scrollbar {
                 width: 6px;
             }
 
-            /* 圖片畫廊 */
             .image-gallery {
                 margin: 0 -7.5px;
             }
@@ -380,12 +513,10 @@
                 margin: 0 7.5px 15px;
             }
 
-            /* 設定網格 */
             .settings-grid {
                 grid-template-columns: 1fr;
             }
             
-            /* 按鈕組 */
             .button-group {
                 flex-direction: column;
             }
@@ -394,8 +525,6 @@
                 margin-left: 0;
                 margin-top: 15px;
             }
-
-            /* 刪除按鈕容器 */
             .delete-button-container {
                 position: static;
                 margin-top: 20px;
@@ -405,11 +534,9 @@
             .delete-member-btn {
                 width: 100%;
                 justify-content: center;
-                gap: 0; /* 移除圖示後無需gap */
+                gap: 0;
             }
         }
-
-        /* === 小型手機斷點 (480px) === */
         @media (max-width: 480px) {
             .members-header h2,
             .orders-header h2 {
@@ -417,7 +544,6 @@
                 text-align: center;
             }
 
-            /* 小型手機模態框優化 */
             .modal-content {
                 width: 98vw !important;
                 max-height: 95vh !important;
@@ -471,16 +597,10 @@
             width: 100%;
             height: 100%;
             background: linear-gradient(135deg, rgba(0,0,0,0.4), rgba(0,0,0,0.6));
-            -webkit-backdrop-filter: blur(6px);
             backdrop-filter: blur(6px);
-            /* Flexbox 完美置中 - 防止任何意外移動 */
             align-items: center;
             justify-content: center;
-            /* 防止用戶選擇和拖拽 */
             user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
         }
         
         .modal.show {
@@ -493,7 +613,6 @@
             }
         }
 
-        /* ===== 統一模態框內容樣式 - 完美置中 ===== */
         .modal-content {
             margin: 0 !important;
             padding: 0;
@@ -507,60 +626,49 @@
             overflow-x: hidden;
         }
 
-        /* 設定模態框 */
         #settingsModal .modal-content.settings-modal {
             width: 85vw !important;
             max-width: 520px !important;
             max-height: 85vh !important;
         }
 
-        /* 訂單模態框 */
         #orderModal .modal-content {
             width: 90vw !important;
             max-width: 800px !important;
             max-height: 85vh !important;
         }
 
-        /* 編輯會員模態框 */
         #editMemberModal .modal-content {
             width: 90vw !important;
             max-width: 580px !important;
             max-height: 85vh !important;
         }
 
-        /* 會員詳情模態框 */
         #memberDetailsModal .modal-content {
             width: 90vw !important;
             max-width: 450px !important;
             max-height: 80vh !important;
         }
 
-        /* ===== 移動設備模態框優化 ===== */
         @media (max-width: 768px) {
-            /* 統一移動設備模態框尺寸 */
             .modal-content {
                 width: 95vw !important;
                 max-width: none !important;
                 max-height: 90vh !important;
             }
             
-            /* 會員詳情模態框特殊高度限制 */
             #memberDetailsModal .modal-content {
                 max-height: 85vh !important;
             }
             
-            /* 確認模態框保持緊湊 */
             .confirm-modal .modal-content {
                 width: 90vw !important;
                 max-width: 320px !important;
             }
             
-            /* 移動設備統一滾動條樣式 */
             .modal-content::-webkit-scrollbar {
-                width: 4px; /* 在移動設備上使用更細的滾動條 */
+                width: 4px;
             }
-
-            /* 編輯會員模態框移動版優化 */
             .member-form {
                 padding: 16px !important;
             }
@@ -579,7 +687,7 @@
                 padding: 10px 16px !important;
                 font-size: 13px !important;
                 min-width: 120px !important;
-                gap: 0 !important; /* 移除圖示後無需gap */
+                gap: 0 !important;
             }
 
             /* 移動設備關閉按鈕優化 */
@@ -601,7 +709,7 @@
 
         }
 
-        /* ===== 統一的右上角關閉按鈕樣式 ===== */
+        /* 統一關閉按鈕樣式 */
         .modal .close,
         .modal .close-btn {
             position: absolute;
@@ -648,30 +756,6 @@
                 inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
-        /* 所有模態框統一使用紅色關閉按鈕，保持一致性 */
-        #orderModal .close:hover,
-        #orderModal .close-btn:hover,
-        #editMemberModal .close:hover,
-        #editMemberModal .close-btn:hover,
-        #memberDetailsModal .close:hover,
-        #memberDetailsModal .close-btn:hover,
-        #settingsModal .close:hover,
-        #settingsModal .close-btn:hover,
-        #timeSelectionModal .close:hover,
-        #timeSelectionModal .close-btn:hover,
-        #confirmModal .close:hover,
-        #confirmModal .close-btn:hover {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.95)) !important;
-            color: white !important;
-            transform: scale(1.15) rotate(90deg) !important;
-            backdrop-filter: blur(16px) !important;
-            box-shadow: 
-                0 8px 25px rgba(239, 68, 68, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-            border-color: rgba(255, 255, 255, 0.5) !important;
-        }
-
-        /* ===== 設定預計完成時間模態框專用樣式 ===== */
         /* 時間選擇模態框 */
         #timeSelectionModal .modal-content.time-selection-content {
             width: 90vw !important;
@@ -1242,28 +1326,9 @@
         }
 
 
-        /* === 響應式設計已合併到統一區塊，此處移除重複定義 === */
+        /* 響應式設計已合併到統一區塊，此處移除重複定義 */
 
-        /* ===== 精美訂單詳情模態框 ===== */
-        #orderModal .modal-content {
-            max-width: 650px;
-            width: 90%;
-            max-height: 85vh;
-            margin: 3% auto;
-            padding: 0;
-            border-radius: var(--border-radius);
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            box-shadow: 
-                0 20px 60px rgba(0, 0, 0, 0.15),
-                0 0 0 1px rgba(255, 255, 255, 0.5);
-            overflow-y: auto;
-            overflow-x: hidden;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(16, 185, 129, 0.3) transparent;
-        }
+        /* 訂單詳情模態框 */
 
         #orderModal h2 {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -1516,7 +1581,7 @@
             margin-left: 15px;
         }
 
-        /* === 圖片畫廊響應式設計已合併到統一區塊 === */
+        /* 圖片畫廊響應式設計已合併到統一區塊 */
 
         .image-gallery img {
             width: 100%;
@@ -1533,9 +1598,9 @@
             box-shadow: var(--shadow-hover);
         }
 
-        /* === 響應式設計已合併到統一區塊 === */
+        /* 響應式設計已合併到統一區塊 */
 
-        /* ===== 精美會員詳情模態框 ===== */
+        /* 會員詳情模態框 */
         #memberDetailsModal .modal-content {
             max-width: 520px;
             width: 90%;
@@ -1763,7 +1828,7 @@
             font-weight: 500;
         }
 
-        /* === 會員詳情響應式設計已合併到統一區塊 === */
+        /* 會員詳情響應式設計已合併到統一區塊 */
 
         /* 圖片預覽樣式 */
         .image-preview {
@@ -2248,6 +2313,218 @@
             font-weight: 500;
         }
 
+        /* 內聯樣式清理 - 統一CSS類 */
+        .logout-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            margin-left: 10px;
+        }
+
+        .error-message {
+            color: red;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .image-load-error {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+        }
+
+        .image-load-error-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .image-load-error-text {
+            font-size: 12px;
+        }
+
+        .exchange-rate-display {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .exchange-rate-separator {
+            color: var(--text-muted);
+            margin: 0 8px;
+        }
+
+        .exchange-rate-amount {
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .modal-image-error {
+            color: #ef4444;
+            font-style: italic;
+        }
+
+        .modal-no-images {
+            color: #666;
+            font-style: italic;
+        }
+
+        .table-loading, .table-error, .table-empty {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .table-error {
+            color: red;
+        }
+
+        .table-empty {
+            color: #666;
+        }
+
+        .member-status-clickable {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .member-last-updated {
+            font-size: 12px;
+        }
+
+        .member-details-empty {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .order-info-highlight {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border: 2px solid var(--primary-color);
+            position: relative;
+        }
+
+        .order-info-member {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .order-info-member-level {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .order-info-member-phone {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 8px;
+        }
+
+        .order-time-card {
+            cursor: pointer;
+        }
+
+        .order-section-hidden {
+            display: none;
+        }
+
+        .order-item-hidden {
+            display: none;
+        }
+
+        .order-actions-section {
+            margin-top: 30px;
+        }
+
+        .order-btn-width {
+            width: 180px;
+        }
+
+        .order-btn-hidden {
+            display: none;
+        }
+
+        .order-btn-icon {
+            margin-right: 8px;
+        }
+
+        .preview-image-hidden {
+            display: none;
+        }
+
+        .edit-member-phone-display {
+            font-size: 12px;
+            color: #666;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+
+        .form-group-hidden {
+            display: none;
+        }
+
+        .confirm-buttons {
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: -ms-flexbox;
+            display: flex;
+            -webkit-box-pack: center;
+            -webkit-justify-content: center;
+            -ms-flex-pack: center;
+            justify-content: center;
+        }
+
+        .confirm-buttons > * + * {
+            margin-left: 10px;
+        }
+
+        .confirm-btn {
+            min-width: 80px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .confirm-btn-primary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+
+        .confirm-btn-primary:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+        }
+
+        .confirm-btn-secondary {
+            background: #f3f4f6;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .confirm-btn-secondary:hover {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+        }
+
+        .confirm-btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        }
+
+        .confirm-btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+        }
+
         .confirm-buttons {
             display: -webkit-box;
             display: -webkit-flex;
@@ -2345,7 +2622,7 @@
             font-size: 16px;
         }
 
-        /* ===== 編輯會員模態框特殊屬性 ===== */
+        /* 編輯會員模態框特殊屬性 */
         #editMemberModal .modal-content {
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
@@ -2409,7 +2686,7 @@
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.8), rgba(16, 185, 129, 0.9));
         }
 
-        /* ===== 設定模態框特殊屬性 ===== */
+        /* 設定模態框特殊屬性 */
         .settings-modal {
             scrollbar-width: thin;
             scrollbar-color: rgba(59, 130, 246, 0.3) transparent;
@@ -2758,7 +3035,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0; /* 移除圖示後無需gap */
+                            gap: 0;
             box-shadow: 
                 0 2px 4px rgba(239, 68, 68, 0.3),
                 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
@@ -2820,7 +3097,7 @@
 
 
 
-        /* === 設定頁面響應式設計已合併到統一區塊 === */
+        /* 設定頁面響應式設計已合併到統一區塊 */
 
         /* 禁用狀態的表單元素樣式 */
         input:disabled, select:disabled {
@@ -2974,25 +3251,7 @@
             margin-top: 8px;
         }
 
-        /* 自定義滾動條樣式 */
-        .history-list::-webkit-scrollbar {
-            width: 6px;
-        }
 
-        .history-list::-webkit-scrollbar-track {
-            background: var(--bg-lighter);
-            border-radius: 3px;
-        }
-
-        .history-list::-webkit-scrollbar-thumb {
-            background: var(--text-light);
-            border-radius: 3px;
-            transition: var(--transition);
-        }
-
-        .history-list::-webkit-scrollbar-thumb:hover {
-            background: var(--primary-color);
-        }
 
         .history-item {
             background: white;
@@ -3055,19 +3314,66 @@
 
         let db, storage;
         
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            storage = firebase.storage();
-            console.info('Firebase 初始化成功');
-        } catch (error) {
-            console.error('Firebase 初始化失敗:', error);
-            console.error('錯誤詳情:', {
-                code: error.code,
-                message: error.message
-            });
-            // 繼續執行，但提醒用戶 Firebase 功能可能不可用
-            console.warn('Firebase 功能不可用，將使用本地 sessionStorage 作為備用方案');
+        // Firebase 初始化函數（等待載入完成後調用）
+        function initializeFirebase() {
+            try {
+                // 詳細檢查Firebase可用性
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase 全域物件未定義');
+                }
+                
+                if (typeof firebase.initializeApp !== 'function') {
+                    throw new Error('Firebase.initializeApp 方法不可用');
+                }
+                
+                if (typeof firebase.firestore !== 'function') {
+                    throw new Error('Firebase.firestore 方法不可用');
+                }
+                
+                if (typeof firebase.storage !== 'function') {
+                    throw new Error('Firebase.storage 方法不可用');
+                }
+                
+                // 檢查是否已經初始化
+                if (firebase.apps && firebase.apps.length > 0) {
+                    console.info('🔄 Firebase 已初始化，使用現有實例');
+                    db = firebase.firestore();
+                    storage = firebase.storage();
+                } else {
+                    console.info('開始初始化 Firebase...');
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+                    storage = firebase.storage();
+                }
+                
+                // 驗證初始化結果
+                if (!db || typeof db.collection !== 'function') {
+                    throw new Error('Firestore 初始化失敗');
+                }
+                
+                if (!storage || typeof storage.ref !== 'function') {
+                    throw new Error('Storage 初始化失敗');
+                }
+                
+                console.info('✅ Firebase 初始化成功');
+                return true;
+            } catch (error) {
+                console.error('❌ Firebase 初始化失敗:', error);
+                console.error('🔍 錯誤詳情:', {
+                    name: error.name,
+                    message: error.message,
+                    code: error.code,
+                    firebaseAvailable: typeof firebase !== 'undefined',
+                    firebaseApps: typeof firebase !== 'undefined' ? firebase.apps?.length : 'N/A'
+                });
+                
+                // 清除可能的部分初始化狀態
+                db = null;
+                storage = null;
+                
+                console.warn('⚠️ Firebase 功能不可用，將使用本地 sessionStorage 作為備用方案');
+                return false;
+            }
         }
 
         // ✅ Firestore 安全規則已成功部署並配置完成
@@ -3136,7 +3442,11 @@
 
         // 檢查 Firebase 是否可用
         function isFirebaseAvailable() {
-            return db && storage && typeof db.collection === 'function';
+            return typeof firebase !== 'undefined' && 
+                   db && 
+                   storage && 
+                   typeof db.collection === 'function' &&
+                   typeof storage.ref === 'function';
         }
 
         // 代碼完整性檢查
@@ -3169,6 +3479,13 @@
 
 
     </script>
+            <!-- 1秒載入骨架屏 -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="skeleton skeleton-header"></div>
+        <div class="skeleton skeleton-nav"></div>
+        <div class="skeleton skeleton-content"></div>
+        <div class="loading-text">載入中...</div>
+    </div>
     
     <!-- 登錄容器 -->
     <div id="loginContainer" class="login-container">
@@ -3194,19 +3511,19 @@
         <h1>後台管理系統</h1>
         
         <div class="settings-button">
-            <button class="btn-primary btn-compact settings-btn" onclick="showSettingsModal()">
+            <button class="btn-primary btn-compact settings-btn" id="settingsBtn">
                 採購設定
             </button>
-            <button class="btn-danger btn-compact" onclick="logout()" style="background: linear-gradient(135deg, #ef4444, #dc2626); border: 1px solid rgba(239, 68, 68, 0.3); margin-left: 10px;">
+            <button class="btn-danger btn-compact logout-btn" id="logoutBtn">
                 登出
             </button>
         </div>
 
         <!-- 導航選單 -->
         <div class="nav-menu">
-            <a href="#home" class="nav-item active" onclick="switchFunction('home')">首頁</a>
-            <a href="#user" class="nav-item" onclick="switchFunction('user')">會員管理</a>
-            <a href="#order" class="nav-item" onclick="switchFunction('order')">訂單管理</a>
+            <a href="#home" class="nav-item active" data-function="home">首頁</a>
+            <a href="#user" class="nav-item" data-function="user">會員管理</a>
+            <a href="#order" class="nav-item" data-function="order">訂單管理</a>
         </div>
 
         <!-- 首頁區塊 -->
@@ -3389,21 +3706,36 @@
     </div>
 
     <script>
-        // 初始化首頁數據（非阻塞版本）
-        function initializeDashboard() {
-            // 立即初始化圖表（不等待）
-            initializeCharts();
+                // 初始化首頁數據（1秒載入優化版本）
+        async function initializeDashboard() {
+            // 立即顯示統計數據（零延遲）
+            setupDashboardListeners();
             
-            // 異步設置監聽器（不阻塞主線程）
-            setTimeout(() => {
-                setupDashboardListeners();
-            }, 0);
+            // 等待 Chart.js 載入完成後初始化圖表
+            const waitForChart = () => {
+                if (typeof Chart !== 'undefined') {
+                    console.info('Chart.js 已載入，初始化圖表');
+                    initializeCharts();
+                } else {
+                    console.info('等待 Chart.js 載入...');
+                    setTimeout(waitForChart, 200);
+                }
+            };
             
-
+            // 延遲 1 秒後開始檢查 Chart.js
+            setTimeout(waitForChart, 1000);
         }
+
+
 
         // 設置儀表板監聽器（分離出來避免阻塞）
         function setupDashboardListeners() {
+            // 確保Firebase可用
+            if (!isFirebaseAvailable()) {
+                console.warn('⚠️ Firebase 不可用，跳過儀表板監聽器設置');
+                return;
+            }
+            
             try {
                 // 判斷 Firestore createdAt 欄位型態
                 let today = new Date();
@@ -3466,9 +3798,29 @@
             }
         }
 
-        // 超快速圖表初始化（非阻塞）
+        // 圖表初始化（簡化版）
         function initializeCharts() {
-            // 使用新的快速圖表管理器（不等待）
+            console.info('開始初始化圖表...');
+            
+            // 檢查圖表容器是否存在
+            const orderChart = document.getElementById('orderTrendChart');
+            const memberChart = document.getElementById('memberLevelChart');
+            
+            if (!orderChart || !memberChart) {
+                console.error('圖表容器不存在，無法初始化圖表');
+                return;
+            }
+            
+            console.info('圖表容器已找到，準備初始化');
+            
+            // 檢查 Firebase 是否可用
+            if (!isFirebaseAvailable()) {
+                console.warn('Firebase 不可用，使用默認數據初始化圖表');
+                fastChartManager.initWithDefaultData();
+                return;
+            }
+            
+            // 使用圖表管理器初始化
             fastChartManager.fastInit();
         }
 
@@ -3489,16 +3841,46 @@
             async fastInit() {
                 // 防止重複初始化
                 if (this.isInitialized) {
+                    console.info('圖表已初始化，跳過重複初始化');
                     return;
                 }
 
                 this.isInitialized = true;
+                console.info('開始初始化圖表管理器');
                 
-                // 直接載入真實數據（無佔位符，更快速）
+                // 檢查 Chart.js 是否可用
                 if (typeof Chart !== 'undefined') {
-                    this.loadRealCharts().catch(error => {
+                    try {
+                        await this.loadRealCharts();
+                        console.info('圖表初始化成功');
+                    } catch (error) {
                         console.error('圖表載入失敗:', error);
-                    });
+                        // 載入失敗時使用默認數據
+                        this.initWithDefaultData();
+                    }
+                } else {
+                    console.warn('Chart.js 尚未載入，等待中...');
+                    // 等待 Chart.js 載入（使用更安全的方式）
+                    this.waitForChartJS();
+                }
+            }
+
+            // 安全等待 Chart.js 載入
+            waitForChartJS(maxAttempts = 10, attempt = 0) {
+                if (attempt >= maxAttempts) {
+                    console.error('Chart.js 載入超時，使用默認數據');
+                    this.initWithDefaultData();
+                    return;
+                }
+
+                if (typeof Chart !== 'undefined') {
+                    console.info('Chart.js 已載入，重新初始化');
+                    this.isInitialized = false; // 重置標誌
+                    this.fastInit();
+                } else {
+                    setTimeout(() => {
+                        this.waitForChartJS(maxAttempts, attempt + 1);
+                    }, 500); // 每 500ms 檢查一次
                 }
             }
 
@@ -3812,6 +4194,43 @@
             reset() {
                 this.cleanup();
             }
+            
+            // 使用默認數據初始化圖表（Firebase 不可用時）
+            initWithDefaultData() {
+                console.info('使用默認數據初始化圖表');
+                
+                // 檢查 Chart.js 是否可用
+                if (typeof Chart === 'undefined') {
+                    console.error('Chart.js 未定義，無法渲染圖表，顯示提示訊息');
+                    this.showChartUnavailableMessage();
+                    return;
+                }
+                
+                this.renderOrderChart(this.getDefaultOrderData());
+                this.renderMemberChart(this.getDefaultMemberData());
+            }
+            
+            // 顯示圖表不可用訊息
+            showChartUnavailableMessage() {
+                const orderChart = document.getElementById('orderTrendChart');
+                const memberChart = document.getElementById('memberLevelChart');
+                
+                if (orderChart) {
+                    orderChart.style.display = 'none';
+                    const container = orderChart.parentElement;
+                    if (container) {
+                        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">圖表載入中，請稍候...</div>';
+                    }
+                }
+                
+                if (memberChart) {
+                    memberChart.style.display = 'none';
+                    const container = memberChart.parentElement;
+                    if (container) {
+                        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">圖表載入中，請稍候...</div>';
+                    }
+                }
+            }
         }
 
         // 全域快速圖表管理器
@@ -3841,7 +4260,7 @@
                     const failed = results.filter(result => result.status === 'rejected' || result.value === null).length;
                     
                     if (images.length > 0) {
-                        console.log(`📊 圖片載入統計 - 總計: ${images.length}, 成功: ${successful}, 失敗: ${failed}`);
+    
                     }
                     
                     // 移除載入指示器
@@ -3852,31 +4271,31 @@
                     
                 } catch (error) {
                     console.error('載入圖片失敗:', error);
-                    container.innerHTML = '<p style="color: red; text-align: center; padding: 20px;">圖片載入失敗</p>';
+                    container.innerHTML = '<p class="error-message">圖片載入失敗</p>';
                 }
             }
             
             // 創建單個圖片元素
             static async createImageElement(image, container, index) {
                 try {
-                    const imageContainer = document.createElement('div');
-                    imageContainer.className = 'enhanced-image-container';
+                        const imageContainer = document.createElement('div');
+                        imageContainer.className = 'enhanced-image-container';
                     imageContainer.dataset.imageIndex = index;
-                    
-                    // 創建圖片元素
-                    const img = document.createElement('img');
-                    img.alt = image.name;
+                        
+                        // 創建圖片元素
+                        const img = document.createElement('img');
+                        img.alt = image.name;
                     img.loading = 'lazy'; // 延遲載入
-                    
-                    // 創建覆蓋層
-                    const overlay = document.createElement('div');
-                    overlay.className = 'image-overlay';
-                    
-                    // 添加圖片信息
-                    const imageInfo = document.createElement('div');
-                    imageInfo.className = 'image-info';
-                    imageInfo.textContent = image.name;
-                    
+                        
+                        // 創建覆蓋層
+                        const overlay = document.createElement('div');
+                        overlay.className = 'image-overlay';
+                        
+                        // 添加圖片信息
+                        const imageInfo = document.createElement('div');
+                        imageInfo.className = 'image-info';
+                        imageInfo.textContent = image.name;
+                        
                     // 使用防抖的點擊處理器
                     let clickTimeout;
                     img.onclick = () => {
@@ -3885,16 +4304,16 @@
                             this.showSimpleImagePreview(image);
                         }, 200);
                     };
-                    img.style.cursor = 'pointer';
-                    
-                    overlay.appendChild(imageInfo);
-                    imageContainer.appendChild(img);
-                    imageContainer.appendChild(overlay);
-                    container.appendChild(imageContainer);
-                    
+                        img.style.cursor = 'pointer';
+                        
+                        overlay.appendChild(imageInfo);
+                        imageContainer.appendChild(img);
+                        imageContainer.appendChild(overlay);
+                        container.appendChild(imageContainer);
+                        
                     // 載入圖片並獲取元數據
-                    await this.loadImageWithMetadata(img, image);
-                    
+                        await this.loadImageWithMetadata(img, image);
+                        
                     return imageContainer;
                 } catch (error) {
                     console.warn(`載入圖片 ${index} 失敗:`, error.message);
@@ -3904,10 +4323,10 @@
                         const errorContainer = document.createElement('div');
                         errorContainer.className = 'enhanced-image-container error-state';
                         errorContainer.innerHTML = `
-                            <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-                                <div style="font-size: 24px; margin-bottom: 8px;">📷</div>
-                                <div style="font-size: 12px;">載入失敗</div>
-                            </div>
+                                                <div class="image-load-error">
+                        <div class="image-load-error-icon">📷</div>
+                        <div class="image-load-error-text">載入失敗</div>
+                    </div>
                         `;
                         return errorContainer;
                     } catch (fallbackError) {
@@ -3932,8 +4351,8 @@
                     img.src = '';
                     
                     // 清理元數據
-                    delete img.dataset.metadata;
-                    delete img.dataset.sizeInfo;
+                            delete img.dataset.metadata;
+                            delete img.dataset.sizeInfo;
                 });
                 
                 // 清空容器
@@ -3967,12 +4386,12 @@
                             const overlay = imgElement.parentNode?.querySelector('.image-overlay');
                             if (overlay) {
                                 // 只添加基本信息，不做複雜的 Firebase 查詢
-                                const metadataDiv = document.createElement('div');
-                                metadataDiv.className = 'image-metadata';
-                                metadataDiv.textContent = imageData.type ? imageData.type.toUpperCase() : '圖片';
-                                
-                                const sizeInfo = document.createElement('div');
-                                sizeInfo.className = 'image-size-info';
+                                    const metadataDiv = document.createElement('div');
+                                    metadataDiv.className = 'image-metadata';
+                                    metadataDiv.textContent = imageData.type ? imageData.type.toUpperCase() : '圖片';
+                                    
+                                    const sizeInfo = document.createElement('div');
+                                    sizeInfo.className = 'image-size-info';
                                 sizeInfo.textContent = `${imgElement.naturalWidth}×${imgElement.naturalHeight}`;
                                 
                                 overlay.appendChild(metadataDiv);
@@ -4119,31 +4538,31 @@
         // 頁面卸載時清理資源
         window.addEventListener('beforeunload', function() {
             try {
-                // 清理訂單詳情監聽器
-                if (orderDetailsListener) {
-                    orderDetailsListener();
-                    orderDetailsListener = null;
-                }
-                
-                // 清理統一管理器監聽器
-                if (typeof listManager !== 'undefined') {
-                    listManager.stopAllListening();
-                }
-                
-                // 清理圖表資源
-                if (fastChartManager) {
-                    fastChartManager.cleanup();
-                }
-                
-                // 清理圖片預覽管理器
-                if (typeof ImagePreviewManager !== 'undefined') {
-                    ImagePreviewManager.removeEventListeners();
+            // 清理訂單詳情監聽器
+            if (orderDetailsListener) {
+                orderDetailsListener();
+                orderDetailsListener = null;
+            }
+            
+            // 清理統一管理器監聽器
+            if (typeof listManager !== 'undefined') {
+                listManager.stopAllListening();
+            }
+            
+            // 清理圖表資源
+            if (fastChartManager) {
+                fastChartManager.cleanup();
+            }
+            
+            // 清理圖片預覽管理器
+            if (typeof ImagePreviewManager !== 'undefined') {
+                ImagePreviewManager.removeEventListeners();
                 }
                 
                 // 清理所有模態框中的圖片資源
                 cleanupAllImageResources();
                 
-                console.log('✅ 頁面資源清理完成');
+    
             } catch (error) {
                 console.error('❌ 頁面資源清理時發生錯誤:', error);
             }
@@ -4289,9 +4708,9 @@
                 const exchangeRate = await getMemberExchangeRate(order.amount, memberData?.level || 'basic');
                 const modalAmountElement = document.getElementById('modalAmount');
                 modalAmountElement.innerHTML = `
-                    <span style="color: var(--primary-color); font-weight: 600;">${exchangeRate}</span>
-                    <span style="color: var(--text-muted); margin: 0 8px;">/</span>
-                    <span style="color: var(--text-color); font-weight: 500;">${order.amount.toFixed(2)}</span>
+                    <span class="exchange-rate-display">${exchangeRate}</span>
+                    <span class="exchange-rate-separator">/</span>
+                    <span class="exchange-rate-amount">${order.amount.toFixed(2)}</span>
                 `;
                 
                 // Calculate final amount asynchronously, consider member level
@@ -4426,11 +4845,19 @@
                 }
 
                 // 顯示其他平台資訊
-                const othersInfoSection = document.getElementById('othersInfoSection');
-                const othersProductLinkItem = document.getElementById('othersProductLinkItem');
-                const othersDescriptionItem = document.getElementById('othersDescriptionItem');
-                const othersProductLinkValue = document.getElementById('othersProductLinkValue');
-                const othersDescriptionValue = document.getElementById('othersDescriptionValue');
+                const {
+                    othersInfoSection,
+                    othersProductLinkItem, 
+                    othersDescriptionItem,
+                    othersProductLinkValue,
+                    othersDescriptionValue
+                } = DOMManager.getMultiple([
+                    'othersInfoSection',
+                    'othersProductLinkItem', 
+                    'othersDescriptionItem',
+                    'othersProductLinkValue',
+                    'othersDescriptionValue'
+                ]);
                 
                 let hasOthersInfo = false;
                 
@@ -4446,55 +4873,55 @@
                             // 安全打開連結
                             window.open(cleanedLink, '_blank', 'noopener,noreferrer');
                         };
-                        othersProductLinkItem.style.display = 'block';
+                        ElementVisibility.show(othersProductLinkItem);
                         hasOthersInfo = true;
                     } else {
                         // 如果無法解析有效URL，顯示為文本
                         othersProductLinkValue.removeAttribute('href');
-                        othersProductLinkValue.textContent = order.othersProductLink;
+                    othersProductLinkValue.textContent = order.othersProductLink;
                         othersProductLinkValue.onclick = null;
                         othersProductLinkValue.style.color = 'var(--text-color)';
                         othersProductLinkValue.style.cursor = 'text';
-                        othersProductLinkItem.style.display = 'block';
-                        hasOthersInfo = true;
+                        ElementVisibility.show(othersProductLinkItem);
+                    hasOthersInfo = true;
                     }
                 } else {
-                    othersProductLinkItem.style.display = 'none';
+                    ElementVisibility.hide(othersProductLinkItem);
                 }
                 
                 // 檢查備註說明
                 if (order.othersDescription && order.othersDescription.trim()) {
                     othersDescriptionValue.textContent = order.othersDescription;
-                    othersDescriptionItem.style.display = 'block';
+                    ElementVisibility.show(othersDescriptionItem);
                     hasOthersInfo = true;
                 } else {
-                    othersDescriptionItem.style.display = 'none';
+                    ElementVisibility.hide(othersDescriptionItem);
                 }
                 
                 // 顯示或隱藏整個其他平台資訊區域
-                othersInfoSection.style.display = hasOthersInfo ? 'block' : 'none';
+                if (hasOthersInfo) {
+                    ElementVisibility.show(othersInfoSection);
+                } else {
+                    ElementVisibility.hide(othersInfoSection);
+                }
 
                 // 根據訂單狀態顯示操作按鈕
-                const orderActionsSection = document.getElementById('orderActionsSection');
-                const acceptOrderBtn = document.getElementById('acceptOrderBtn');
-                const completeOrderBtn = document.getElementById('completeOrderBtn');
+                const {
+                    orderActionsSection,
+                    acceptOrderBtn,
+                    completeOrderBtn
+                } = DOMManager.getMultiple([
+                    'orderActionsSection',
+                    'acceptOrderBtn',
+                    'completeOrderBtn'
+                ]);
                 
-                if (order.status === 'pending') {
-                    // 待處理狀態：顯示接收按鈕，可選擇是否同時顯示完成按鈕
-                    orderActionsSection.style.display = 'block';
-                    acceptOrderBtn.style.display = 'block';
-                    completeOrderBtn.style.display = 'block';
-                } else if (order.status === 'processing') {
-                    // 處理中狀態：隱藏接收按鈕，顯示完成按鈕
-                    orderActionsSection.style.display = 'block';
-                    acceptOrderBtn.style.display = 'none';
-                    completeOrderBtn.style.display = 'block';
-                } else {
-                    // 已完成狀態：隱藏操作區域
-                    orderActionsSection.style.display = 'none';
-                    acceptOrderBtn.style.display = 'none';
-                    completeOrderBtn.style.display = 'none';
-                }
+                // 使用訂單狀態管理器統一處理按鈕顯示邏輯
+                OrderStatusManager.updateActionButtons(order.status, {
+                    orderActionsSection,
+                    acceptOrderBtn,
+                    completeOrderBtn
+                });
 
                 // 異步載入圖片（不阻塞模態框顯示）
                 if (images.length > 0) {
@@ -4507,11 +4934,11 @@
                             await ImageManager.loadOrderImages(images, modalImages, orderId);
                         } catch (error) {
                             console.error('圖片載入失敗:', error);
-                            modalImages.innerHTML = '<p style="color: #ef4444; font-style: italic;">圖片載入失敗</p>';
+                            modalImages.innerHTML = '<p class="modal-image-error">圖片載入失敗</p>';
                         }
                     }, 0);
                 } else {
-                    modalImages.innerHTML = '<p style="color: #666; font-style: italic;">無圖片</p>';
+                    modalImages.innerHTML = '<p class="modal-no-images">無圖片</p>';
                 }
             } catch (error) {
                 console.error('Error updating order details display:', error);
@@ -4520,43 +4947,27 @@
 
         // 清理訂單模態框資源
         function cleanupOrderModalResources() {
-            try {
-                // 清理圖片容器中的所有圖片
-                const modalImages = document.getElementById('modalImages');
+            ErrorHandler.safeDom(() => {
+                const modalImages = DOMManager.get('modalImages');
                 if (modalImages) {
-                    const images = modalImages.querySelectorAll('img');
-                    images.forEach(img => {
-                        // 移除事件監聽器
-                        img.onclick = null;
-                        img.onload = null;
-                        img.onerror = null;
-                        
-                        // 清空 src，停止載入
+                    // 清理所有圖片的事件監聽器和資源
+                    modalImages.querySelectorAll('img').forEach(img => {
+                        img.onclick = img.onload = img.onerror = null;
                         img.src = '';
-                        
-                        // 清理暫存的元數據
                         delete img.dataset.metadata;
                         delete img.dataset.sizeInfo;
                     });
-                    
-                    // 清空容器內容
                     modalImages.innerHTML = '';
                 }
                 
-                // 確保圖片預覽也被關閉
+                // 關閉圖片預覽
                 if (typeof ImagePreviewManager !== 'undefined') {
                     ImagePreviewManager.close();
                 }
                 
-                // 強制垃圾回收提示（僅在開發環境）
-                if (typeof gc === 'function') {
-                    gc();
-                }
-                
-                console.log('✅ 訂單模態框資源清理完成');
-            } catch (error) {
-                console.error('❌ 清理訂單模態框資源時發生錯誤:', error);
-            }
+                // 開發環境垃圾回收提示
+                if (typeof gc === 'function') gc();
+            }, '清理訂單模態框資源');
         }
 
         // 關閉模態框
@@ -4653,7 +5064,7 @@
                     closeEditMemberModal();
                     
                     // 移除手動刷新，讓即時監聽器自動處理更新
-                    console.log('會員刪除成功，等待即時更新...');
+    
                     
                 } catch (error) {
                     console.error('刪除會員失敗:', error);
@@ -4754,7 +5165,7 @@
             }, 3000);
         }
 
-
+            
 
         // 圖片預覽管理器 - 統一管理預覽功能，避免事件監聽器重複綁定
         // 使用立即執行函數避免全域污染，提供版本控制和衝突檢測
@@ -5367,14 +5778,14 @@
         function startOrderAutoStatusCheck() {
             // 防止重複啟動
             if (AdminAutoProcessor.isRunning) {
-                console.log('⚠️ 自動處理系統已在運行中，跳過重複啟動');
+
                 return;
             }
             
             // 清除現有的計時器
             stopOrderAutoStatusCheck();
             
-            console.log('🚀 啟動系統級訂單自動狀態檢查（獨立於登錄狀態）');
+
             AdminAutoProcessor.isRunning = true;
             
             // 立即執行一次檢查
@@ -5408,7 +5819,7 @@
                 clearInterval(AdminAutoProcessor.timer);
                 AdminAutoProcessor.timer = null;
                 AdminAutoProcessor.isRunning = false;
-                console.log('⏹️ 停止系統訂單自動狀態檢查');
+    
             }
         }
 
@@ -5440,7 +5851,7 @@
                     
                     // 檢查是否需要從待處理轉為處理中
                     if (timeDiffSeconds >= autoProcessingSeconds) {
-                        console.log(`🔄 訂單 ${order.orderNumber || doc.id} 自動轉為處理中 (已過 ${Math.round(timeDiffSeconds)} 秒)`);
+                        
                         
                         // 準備更新數據
                         const updateData = {
@@ -5471,7 +5882,7 @@
                 // 執行批次更新
                 if (batchCount > 0) {
                     await batch.commit();
-                    console.log(`✅ 系統已自動更新 ${updatedCount} 個訂單狀態`);
+    
                     
                     // 顯示成功提示（僅在有更新且有管理員登錄時）
                     if (updatedCount > 0 && isAuthenticated) {
@@ -5660,8 +6071,6 @@
 
                 currentOrderId = orderId;
                 
-                console.log('正在載入訂單資料...', orderId);
-                
                 // 使用 async/await 替代 then/catch
                 const docSnapshot = await db.collection('orders').doc(orderId).get();
                 
@@ -5680,8 +6089,6 @@
                     return;
                 }
 
-                console.log('訂單資料載入成功:', order);
-                
                 // 顯示模態框
                 ModalManager.show('timeSelectionModal');
                 
@@ -5961,7 +6368,6 @@
                 this.domConfigs = new Map(); // 存儲DOM配置
                 this.lastOrderStatus = 'all'; // 追蹤訂單狀態篩選
                 
-    
             }
 
             // 註冊列表管理配置
@@ -5981,7 +6387,6 @@
                 this.renderFunctions.set(listId, config.renderFunction);
                 this.searchStates.set(listId, '');
                 
-    
             }
 
             // 統一的DOM檢查
@@ -6058,7 +6463,7 @@
                 
                 // 只在真正需要時顯示載入狀態
                 if (!hasDataRows) {
-                    listElement.innerHTML = `<tr><td colspan="${config.columns}" style="text-align: center; padding: 20px;">${config.loadingMessage}</td></tr>`;
+                    listElement.innerHTML = `<tr><td colspan="${config.columns}" class="table-loading">${config.loadingMessage}</td></tr>`;
                 }
 
                 // 構建查詢
@@ -6110,17 +6515,9 @@
                     
                     if (statusFilter && statusFilter.value !== 'all') {
                         // 建立狀態篩選查詢
-                        // 先嘗試使用 status + orderBy 的查詢
-                        try {
-                            return db.collection(config.collection)
-                                .where('status', '==', statusFilter.value)
-                                .orderBy(config.primaryOrderBy, 'desc');
-                        } catch (error) {
-                            // 複合索引不存在，嘗試替代方案
-                            // 如果複合索引不存在，只用狀態篩選，不排序
-                            return db.collection(config.collection)
-                                .where('status', '==', statusFilter.value);
-                        }
+                        // 避免複合索引需求，只使用狀態篩選，前端排序
+                        return db.collection(config.collection)
+                            .where('status', '==', statusFilter.value);
                     } else {
                                                     // 建立全部訂單查詢
                         return db.collection(config.collection).orderBy(config.primaryOrderBy, 'desc');
@@ -6154,7 +6551,8 @@
                             fallbackQuery = db.collection(config.collection)
                                 .where('status', '==', statusFilter.value);
                         } else {
-                            fallbackQuery = db.collection(config.collection).orderBy(config.fallbackOrderBy, 'desc');
+                            // 全部訂單查詢，使用 createdAt 排序
+                            fallbackQuery = db.collection(config.collection).orderBy('createdAt', 'desc');
                         }
                     } else {
                         fallbackQuery = db.collection(config.collection).orderBy(config.fallbackOrderBy, 'desc');
@@ -6191,14 +6589,14 @@
                             }, finalError => {
                                 console.error('會員列表最終查詢也失敗:', finalError);
                                 if (listElement) {
-                                    listElement.innerHTML = `<tr><td colspan="${config.columns}" style="text-align: center; padding: 20px; color: red;">網路連線異常或權限不足，請檢查後重試</td></tr>`;
+                                    listElement.innerHTML = `<tr><td colspan="${config.columns}" class="table-error">網路連線異常或權限不足，請檢查後重試</td></tr>`;
                                 }
                             });
                             
                             this.listeners.set(listId, finalUnsubscribe);
                         } else {
                             if (listElement) {
-                                listElement.innerHTML = `<tr><td colspan="${config.columns}" style="text-align: center; padding: 20px; color: red;">${config.errorMessage}</td></tr>`;
+                                listElement.innerHTML = `<tr><td colspan="${config.columns}" class="table-error">${config.errorMessage}</td></tr>`;
                             }
                         }
                     });
@@ -6208,7 +6606,7 @@
                 } else {
                     // 其他錯誤
                     if (listElement) {
-                        listElement.innerHTML = `<tr><td colspan="${config.columns}" style="text-align: center; padding: 20px; color: red;">網路連線異常，請檢查網路後重試</td></tr>`;
+                        listElement.innerHTML = `<tr><td colspan="${config.columns}" class="table-error">網路連線異常，請檢查網路後重試</td></tr>`;
                     }
                 }
             }
@@ -6266,10 +6664,8 @@
         // 創建全局統一管理器實例
         const listManager = new ListManagerSystem();
 
-        /* ================================================================
-        * === DOM 元素緩存系統 ===
-        * 避免重複獲取DOM元素，提升性能和代碼一致性
-        ================================================================ */
+        /* DOM 元素緩存系統
+         * 避免重複獲取DOM元素，提升性能和代碼一致性 */
         const DOMCache = {
             // 緩存對象
             cache: new Map(),
@@ -6308,17 +6704,15 @@
             
             // 診斷緩存狀態
             diagnose() {
-                console.log('DOM緩存狀態:', {
-                    缓存數量: this.cache.size,
-                    緩存元素: Array.from(this.cache.keys())
-                });
+                return {
+                    size: this.cache.size,
+                    keys: Array.from(this.cache.keys())
+                };
             }
         };
 
-        /* ================================================================
-        * === Firebase 查詢緩存系統 ===
-        * 避免重複的數據庫查詢，提升應用性能
-        ================================================================ */
+        /* Firebase 查詢緩存系統
+         * 避免重複的數據庫查詢，提升應用性能 */
         const FirebaseCache = {
             // 緩存存儲
             cache: new Map(),
@@ -6454,23 +6848,99 @@
             
             // 診斷緩存狀態
             diagnose() {
-                console.log('Firebase緩存狀態:', {
-                    緩存項目數: this.cache.size,
-                    緩存鍵列表: Array.from(this.cache.keys()),
-                    緩存詳情: Array.from(this.cache.entries()).map(([key, value]) => ({
-                        鍵: key,
-                        大小: JSON.stringify(value.data).length,
-                        剩餘時間: Math.max(0, value.expiry - Date.now()),
-                        創建時間: new Date(value.timestamp).toLocaleString()
+                return {
+                    size: this.cache.size,
+                    keys: Array.from(this.cache.keys()),
+                    details: Array.from(this.cache.entries()).map(([key, value]) => ({
+                        key,
+                        size: JSON.stringify(value.data).length,
+                        timeLeft: Math.max(0, value.expiry - Date.now()),
+                        created: new Date(value.timestamp).toLocaleString()
                     }))
-                });
+                };
             }
         };
 
-        /* ================================================================
-        * === 異步錯誤處理標準化系統 ===
-        * 統一的錯誤處理機制，提升用戶體驗和調試能力
-        ================================================================ */
+        /* 統一資源載入系統（移除重複的LazyLoader）
+         * 使用SuperLazyLoader作為唯一載入系統 */
+
+        /* 簡化錯誤處理系統
+         * 減少冗餘的try-catch，統一錯誤處理流程 */
+        const ErrorHandler = {
+            // 安全執行函數（自動錯誤處理）
+            async safe(fn, context = '操作') {
+                try {
+                    return await fn();
+                } catch (error) {
+                    console.error(`${context}失敗:`, error);
+                    return null;
+                }
+            },
+            
+            // 安全執行同步函數
+            safeSync(fn, context = '操作') {
+                try {
+                    return fn();
+                } catch (error) {
+                    console.error(`${context}失敗:`, error);
+                    return null;
+                }
+            },
+            
+            // DOM操作安全執行
+            safeDom(fn, context = 'DOM操作') {
+                try {
+                    return fn();
+                } catch (error) {
+                    console.error(`${context}失敗:`, error);
+                    return false;
+                }
+            },
+            
+            // Firebase操作安全執行
+            async safeFirebase(fn, context = 'Firebase操作') {
+                try {
+                    return await fn();
+                } catch (error) {
+                    console.error(`${context}失敗:`, error);
+                    if (error.code) {
+                        console.error('錯誤代碼:', error.code);
+                    }
+                    return null;
+                }
+            }
+        };
+
+        /* 表單驗證簡化系統
+         * 統一處理表單驗證，減少重複代碼 */
+        const FormValidator = {
+            // 快速驗證配置
+            quick: {
+                phone: (value) => /^1[3-9]\d{9}$/.test(value) ? null : '請輸入有效的手機號碼',
+                required: (value, name) => value?.trim() ? null : `${name}不能為空`,
+                positive: (value, name) => value > 0 ? null : `${name}必須大於0`,
+                url: (value) => {
+                    try { new URL(value); return null; } 
+                    catch { return '請輸入有效的網址'; }
+                }
+            },
+            
+            // 批量驗證
+            validate(config) {
+                const errors = [];
+                Object.entries(config).forEach(([elementId, rules]) => {
+                    const value = DOMManager.getValue(elementId);
+                    rules.forEach(rule => {
+                        const error = typeof rule === 'function' ? rule(value) : this.quick[rule]?.(value, elementId);
+                        if (error) errors.push(error);
+                    });
+                });
+                return { isValid: errors.length === 0, errors, first: errors[0] };
+            }
+        };
+
+        /* 異步錯誤處理標準化系統
+         * 統一的錯誤處理機制，提升用戶體驗和調試能力 */
         const AsyncErrorHandler = {
             // 錯誤類型分類
             ErrorTypes: {
@@ -6602,17 +7072,15 @@
             
             // 診斷錯誤統計
             diagnose() {
-                console.log('錯誤統計:', {
-                    錯誤總數: Array.from(this.errorCounts.values()).reduce((a, b) => a + b, 0),
-                    錯誤分佈: Object.fromEntries(this.errorCounts)
-                });
+                return {
+                    totalErrors: Array.from(this.errorCounts.values()).reduce((a, b) => a + b, 0),
+                    errorDistribution: Object.fromEntries(this.errorCounts)
+                };
             }
         };
 
-        /* ================================================================
-        * === 數據驗證統一系統 ===
-        * 標準化的數據驗證機制，確保數據一致性和安全性
-        ================================================================ */
+        /* 數據驗證統一系統
+         * 標準化的數據驗證機制，確保數據一致性和安全性 */
         const DataValidator = {
             // 驗證規則
             ValidationRules: {
@@ -6812,6 +7280,321 @@
         };
 
         /* ================================================================
+        * === DOM元素統一管理系統 ===
+        * 統一DOM獲取、緩存和操作，減少重複代碼
+        ================================================================ */
+        const DOMManager = {
+            // 元素緩存映射
+            cache: new Map(),
+            
+            // 元素ID映射表（預定義常用元素）
+            elements: {
+                // 訂單相關
+                orderModal: 'orderModal',
+                ordersList: 'ordersList',
+                modalImages: 'modalImages',
+                modalAmount: 'modalAmount',
+                modalExpectedDateTime: 'modalExpectedDateTime',
+                
+                // 其他平台信息
+                othersInfoSection: 'othersInfoSection',
+                othersProductLinkItem: 'othersProductLinkItem',
+                othersDescriptionItem: 'othersDescriptionItem',
+                othersProductLinkValue: 'othersProductLinkValue',
+                othersDescriptionValue: 'othersDescriptionValue',
+                
+                // 操作按鈕
+                orderActionsSection: 'orderActionsSection',
+                acceptOrderBtn: 'acceptOrderBtn',
+                completeOrderBtn: 'completeOrderBtn',
+                
+                // 會員相關
+                membersList: 'membersList',
+                memberSearch: 'memberSearch',
+                editMemberModal: 'editMemberModal',
+                editMemberPhone: 'editMemberPhone',
+                editMemberLevel: 'editMemberLevel',
+                editMemberStatus: 'editMemberStatus',
+                editMemberExpiry: 'editMemberExpiry',
+                editMemberRemark: 'editMemberRemark',
+                
+                // 設置相關
+                settingsModal: 'settingsModal',
+                statusFilter: 'statusFilter',
+                
+                // 預覽相關
+                imagePreview: 'imagePreview',
+                previewImage: 'previewImage',
+                
+                // 確認模態框
+                confirmModal: 'confirmModal',
+                confirmButton: 'confirmButton',
+                
+                // 登錄相關
+                adminPassword: 'adminPassword',
+                loginError: 'loginError',
+                lockoutMessage: 'lockoutMessage'
+            },
+            
+            // 獲取元素（帶緩存）
+            get(elementId) {
+                // 支持直接傳入ID字符串或使用預定義映射
+                const id = this.elements[elementId] || elementId;
+                
+                if (this.cache.has(id)) {
+                    const cached = this.cache.get(id);
+                    // 檢查元素是否仍在DOM中
+                    if (cached && document.contains(cached)) {
+                        return cached;
+                    }
+                    // 如果元素不在DOM中，清除緩存
+                    this.cache.delete(id);
+                }
+                
+                const element = document.getElementById(id);
+                if (element) {
+                    this.cache.set(id, element);
+                }
+                return element;
+            },
+            
+            // 批量獲取元素
+            getMultiple(elementIds) {
+                const result = {};
+                elementIds.forEach(id => {
+                    result[id] = this.get(id);
+                });
+                return result;
+            },
+            
+            // 顯示元素
+            show(elementId, displayType = 'block') {
+                const element = this.get(elementId);
+                if (!element) return false;
+                
+                ElementVisibility.show(element, displayType);
+                return true;
+            },
+            
+            // 隱藏元素
+            hide(elementId) {
+                const element = this.get(elementId);
+                if (!element) return false;
+                
+                ElementVisibility.hide(element);
+                return true;
+            },
+            
+            // 批量顯示
+            showMultiple(elementIds, displayType = 'block') {
+                elementIds.forEach(id => this.show(id, displayType));
+            },
+            
+            // 批量隱藏
+            hideMultiple(elementIds) {
+                elementIds.forEach(id => this.hide(id));
+            },
+            
+            // 設置文本內容
+            setText(elementId, text) {
+                const element = this.get(elementId);
+                if (element) {
+                    element.textContent = text;
+                    return true;
+                }
+                return false;
+            },
+            
+            // 設置HTML內容
+            setHTML(elementId, html) {
+                const element = this.get(elementId);
+                if (element) {
+                    element.innerHTML = html;
+                    return true;
+                }
+                return false;
+            },
+            
+            // 設置值
+            setValue(elementId, value) {
+                const element = this.get(elementId);
+                if (element) {
+                    element.value = value;
+                    return true;
+                }
+                return false;
+            },
+            
+            // 獲取值
+            getValue(elementId) {
+                const element = this.get(elementId);
+                return element ? element.value : null;
+            },
+            
+            // 清除緩存
+            clearCache() {
+                this.cache.clear();
+            },
+            
+            // 清除特定元素緩存
+            clearElement(elementId) {
+                const id = this.elements[elementId] || elementId;
+                this.cache.delete(id);
+            }
+        };
+
+        /* ================================================================
+        * === 元素顯示/隱藏統一管理系統 ===
+        * 使用CSS類而非內聯樣式，提升性能和可維護性
+        ================================================================ */
+        const ElementVisibility = {
+            // 顯示元素
+            show(elementOrId, displayType = 'block') {
+                const element = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+                if (!element) return false;
+                
+                // 移除隱藏類
+                element.classList.remove('order-section-hidden', 'order-item-hidden', 'order-btn-hidden', 'form-group-hidden', 'preview-image-hidden');
+                
+                // 如果需要特殊的display類型，設置內聯樣式
+                if (displayType !== 'block') {
+                    element.style.display = displayType;
+                } else {
+                    element.style.display = '';
+                }
+                
+                return true;
+            },
+            
+            // 隱藏元素
+            hide(elementOrId) {
+                const element = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+                if (!element) return false;
+                
+                // 根據元素類型添加對應的隱藏類
+                if (element.id && element.id.includes('Section')) {
+                    element.classList.add('order-section-hidden');
+                } else if (element.id && element.id.includes('Item')) {
+                    element.classList.add('order-item-hidden');
+                } else if (element.id && element.id.includes('Btn')) {
+                    element.classList.add('order-btn-hidden');
+                } else if (element.classList.contains('form-group') || element.classList.contains('delete-button-container')) {
+                    element.classList.add('form-group-hidden');
+                } else if (element.id === 'previewImage') {
+                    element.classList.add('preview-image-hidden');
+                } else {
+                    // 通用隱藏
+                    element.style.display = 'none';
+                }
+                
+                return true;
+            },
+            
+            // 切換顯示狀態
+            toggle(elementOrId, displayType = 'block') {
+                const element = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+                if (!element) return false;
+                
+                const isHidden = element.style.display === 'none' || 
+                               element.classList.contains('order-section-hidden') ||
+                               element.classList.contains('order-item-hidden') ||
+                               element.classList.contains('order-btn-hidden') ||
+                               element.classList.contains('form-group-hidden') ||
+                               element.classList.contains('preview-image-hidden');
+                
+                if (isHidden) {
+                    this.show(element, displayType);
+                } else {
+                    this.hide(element);
+                }
+                
+                return true;
+            },
+            
+            // 批量操作
+            showMultiple(elements, displayType = 'block') {
+                elements.forEach(elementOrId => this.show(elementOrId, displayType));
+            },
+            
+            hideMultiple(elements) {
+                elements.forEach(elementOrId => this.hide(elementOrId));
+            }
+        };
+
+        /* ================================================================
+        * === 訂單狀態管理系統 ===
+        * 統一處理訂單狀態相關的UI更新邏輯
+        ================================================================ */
+        const OrderStatusManager = {
+            // 狀態配置映射
+            statusConfig: {
+                pending: {
+                    showSection: true,
+                    showAccept: true,
+                    showComplete: true,
+                    description: '待處理狀態'
+                },
+                processing: {
+                    showSection: true,
+                    showAccept: false,
+                    showComplete: true,
+                    description: '處理中狀態'
+                },
+                completed: {
+                    showSection: false,
+                    showAccept: false,
+                    showComplete: false,
+                    description: '已完成狀態'
+                }
+            },
+            
+            // 更新操作按鈕顯示
+            updateActionButtons(status, elements) {
+                const config = this.statusConfig[status] || this.statusConfig.completed;
+                const { orderActionsSection, acceptOrderBtn, completeOrderBtn } = elements;
+                
+                // 根據配置更新顯示狀態
+                if (config.showSection) {
+                    ElementVisibility.show(orderActionsSection);
+                } else {
+                    ElementVisibility.hide(orderActionsSection);
+                }
+                
+                if (config.showAccept) {
+                    ElementVisibility.show(acceptOrderBtn);
+                } else {
+                    ElementVisibility.hide(acceptOrderBtn);
+                }
+                
+                if (config.showComplete) {
+                    ElementVisibility.show(completeOrderBtn);
+                } else {
+                    ElementVisibility.hide(completeOrderBtn);
+                }
+            },
+            
+            // 獲取狀態顯示名稱
+            getStatusName(status) {
+                const statusNames = {
+                    pending: '待處理',
+                    processing: '處理中',
+                    completed: '已完成'
+                };
+                return statusNames[status] || '未知狀態';
+            },
+            
+            // 獲取狀態CSS類
+            getStatusClass(status) {
+                const statusClasses = {
+                    pending: 'status-pending',
+                    processing: 'status-processing', 
+                    completed: 'status-completed'
+                };
+                return statusClasses[status] || 'status-unknown';
+            }
+        };
+
+        /* ================================================================
         * === 事件監聽器管理系統 ===
         * 避免重複綁定事件監聽器，統一管理事件處理
         ================================================================ */
@@ -6888,10 +7671,10 @@
             
             // 診斷事件監聽器狀態
             diagnose() {
-                console.log('事件監聽器狀態:', {
-                    監聽器數量: this.listeners.size,
-                    監聽器列表: Array.from(this.listeners.keys())
-                });
+                return {
+                    count: this.listeners.size,
+                    keys: Array.from(this.listeners.keys())
+                };
             }
         };
 
@@ -6924,8 +7707,8 @@
                 listElementId: 'ordersList',
                 filterElementId: 'statusFilter',
                 collection: 'orders',
-                primaryOrderBy: 'lastUpdated',
-                fallbackOrderBy: 'createdAt',  // 修正：使用createdAt而不是orderDate
+                primaryOrderBy: 'createdAt',  // 使用 createdAt 避免索引問題
+                fallbackOrderBy: 'createdAt',
                 emptyMessage: '暫無訂單資料',
                 loadingMessage: '載入中...',
                 errorMessage: '載入訂單列表失敗，請稍後重試',
@@ -6962,7 +7745,7 @@
             membersList.innerHTML = '';
 
             if (snapshot.empty) {
-                membersList.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #666;">暫無會員資料</td></tr>';
+                membersList.innerHTML = '<tr><td colspan="8" class="table-empty">暫無會員資料</td></tr>';
                 return;
             }
 
@@ -7012,13 +7795,13 @@
 
             // 如果有搜尋條件但沒有結果
             if (searchQuery && filteredDocs.length === 0) {
-                membersList.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #666;">找不到符合條件的會員</td></tr>';
+                membersList.innerHTML = '<tr><td colspan="8" class="table-empty">找不到符合條件的會員</td></tr>';
                 return;
             }
 
             // 如果沒有搜尋條件但也沒有會員
             if (!searchQuery && filteredDocs.length === 0) {
-                membersList.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #666;">暫無會員資料</td></tr>';
+                membersList.innerHTML = '<tr><td colspan="8" class="table-empty">暫無會員資料</td></tr>';
                 return;
             }
 
@@ -7029,7 +7812,7 @@
                 const actionsCell = document.createElement('td');
                 
                 if (member.status === 'suspended') {
-                    statusCell.innerHTML = `<span class="member-status status-suspended" style="cursor:pointer;text-decoration:underline;" title="點擊查看詳情" onclick="showMemberDetails('${doc.id}')">${getMemberStatusName(member.status)}</span>`;
+                    statusCell.innerHTML = `<span class="member-status status-suspended member-status-clickable" title="點擊查看詳情" onclick="showMemberDetails('${doc.id}')">${getMemberStatusName(member.status)}</span>`;
                 } else {
                     statusCell.innerHTML = `<span class="member-status status-${member.status}">${getMemberStatusName(member.status)}</span>`;
                 }
@@ -7058,7 +7841,7 @@
                     <td>${member.expiry || '-'}</td>
                     <td>${formatDateTime(member.joinDate)}</td>
                     <td>${formatDateTime(member.lastLogin)}</td>
-                    <td style="font-size: 12px;">${formatDateTime(member.lastUpdated) || '未設定'}</td>
+                    <td class="member-last-updated">${formatDateTime(member.lastUpdated) || '未設定'}</td>
                 `;
                 
                 row.appendChild(statusCell);
@@ -7134,14 +7917,14 @@
                             remarkHistoryList.appendChild(historyItem);
                         });
                     } else {
-                        remarkHistoryList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">此會員無暫停歷史記錄</div>';
+                        remarkHistoryList.innerHTML = '<div class="member-details-empty">此會員無暫停歷史記錄</div>';
                     }
                     
                     // 如果過濾後沒有暫停記錄，顯示空狀態
                     if (member.remarkHistory && member.remarkHistory.length > 0) {
                         const suspendedCount = member.remarkHistory.filter(h => h.action === 'suspended').length;
                         if (suspendedCount === 0) {
-                            remarkHistoryList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">此會員無暫停歷史記錄</div>';
+                            remarkHistoryList.innerHTML = '<div class="member-details-empty">此會員無暫停歷史記錄</div>';
                         }
                     }
                 }
@@ -7219,13 +8002,20 @@
                 return;
             }
 
-            // 使用 UI 管理器初始化模態框
+            // 使用 UI 管理器初始化模態框（異步處理）
             memberData.phone = phone; // 確保 phone 資料存在
-            if (EditModalManager.initializeModal(memberData)) {
-                // 顯示會員電話號碼在標題中
-                document.getElementById('editMemberPhoneDisplay').textContent = `(${phone})`;
-                ModalManager.show('editMemberModal');
-            } else {
+            
+            try {
+                const success = await EditModalManager.initializeModal(memberData);
+                if (success) {
+                    // 顯示會員電話號碼在標題中
+                    document.getElementById('editMemberPhoneDisplay').textContent = `(${phone})`;
+                    ModalManager.show('editMemberModal');
+                } else {
+                    alert('載入會員資料失敗');
+                }
+            } catch (error) {
+                console.error('會員編輯模態框初始化失敗:', error);
                 alert('載入會員資料失敗');
             }
         }
@@ -7453,7 +8243,7 @@
                 // 使用已獲取的statusFilter
                 const selectedStatus = statusFilter ? statusFilter.value : 'all';
                 const message = selectedStatus === 'all' ? '暫無訂單資料' : `暫無「${getStatusName(selectedStatus)}」狀態的訂單`;
-                ordersList.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #666;">${message}</td></tr>`;
+                ordersList.innerHTML = `<tr><td colspan="7" class="table-empty">${message}</td></tr>`;
                 return;
             }
             
@@ -7480,8 +8270,32 @@
                     }
                 }
                 
+                // 轉換為數組並按時間排序（前端排序）
+                const ordersArray = Object.entries(uniqueOrders).map(([id, order]) => ({
+                    id,
+                    ...order
+                }));
+                
+                // 按創建時間降序排序（最新的在前）
+                ordersArray.sort((a, b) => {
+                    const timeA = a.createdAt ? (
+                        typeof a.createdAt.toDate === 'function' ? 
+                        a.createdAt.toDate().getTime() : 
+                        new Date(a.createdAt).getTime()
+                    ) : 0;
+                    
+                    const timeB = b.createdAt ? (
+                        typeof b.createdAt.toDate === 'function' ? 
+                        b.createdAt.toDate().getTime() : 
+                        new Date(b.createdAt).getTime()
+                    ) : 0;
+                    
+                    return timeB - timeA; // 降序排列
+                });
+                
                 // 渲染訂單列表
-                for (const [id, order] of Object.entries(uniqueOrders)) {
+                for (const order of ordersArray) {
+                    const { id } = order;
                     const memberData = memberDataMap.get(order.phone) || null;
                     
                     // 計算最終金額（使用會員等級）
@@ -7753,17 +8567,17 @@
                 </div>
                 
                 <div class="order-info-grid">
-                    <div class="info-card" style="background: linear-gradient(135deg, #f8fafc, #e2e8f0); border: 2px solid var(--primary-color); position: relative;">
-                        <div class="info-value" style="display: flex; flex-direction: column; justify-content: center; text-align: center; padding: 10px 0;">
-                            <div style="font-size: 18px; font-weight: 500; color: var(--text-color);" id="modalMemberLevel">-</div>
-                            <div style="font-size: 24px; font-weight: 600; color: var(--primary-color); margin-top: 8px;" id="modalMemberPhone">-</div>
+                    <div class="info-card order-info-highlight">
+                        <div class="info-value order-info-member">
+                            <div class="order-info-member-level" id="modalMemberLevel">-</div>
+                            <div class="order-info-member-phone" id="modalMemberPhone">-</div>
                         </div>
                     </div>
                     <div class="info-card">
                         <div class="info-label">建立時間</div>
                         <div class="info-value" id="modalCreatedAt"></div>
                     </div>
-                    <div class="info-card" id="expectedTimeCard" style="cursor: pointer;" onclick="openQuickTimeEdit()" title="點擊修改時間">
+                    <div class="info-card order-time-card" id="expectedTimeCard" onclick="openQuickTimeEdit()" title="點擊修改時間">
                         <div class="info-label">預計完成時間</div>
                         <div class="info-value" id="modalExpectedTime">
                             <div id="modalExpectedDateTime" class="datetime-display"></div>
@@ -7784,16 +8598,16 @@
                 </div>
 
                 <!-- 其他平台連結資訊 -->
-                <div id="othersInfoSection" class="order-info-section" style="display: none;">
+                <div id="othersInfoSection" class="order-info-section order-section-hidden">
                     <h3>其他平台資訊</h3>
                     <div class="info-grid">
-                        <div class="info-item" id="othersProductLinkItem" style="display: none;">
+                        <div class="info-item order-item-hidden" id="othersProductLinkItem">
                             <div class="info-label">商品連結</div>
                             <div class="info-value">
                                 <a id="othersProductLinkValue" href="#" target="_blank" class="link-display">查看連結</a>
                             </div>
                         </div>
-                        <div class="info-item" id="othersDescriptionItem" style="display: none;">
+                        <div class="info-item order-item-hidden" id="othersDescriptionItem">
                             <div class="info-label">備註說明</div>
                             <div class="info-value" id="othersDescriptionValue"></div>
                         </div>
@@ -7806,16 +8620,16 @@
                 </div>
 
                 <!-- 訂單操作區域 - 位於最底部 -->
-                <div id="orderActionsSection" class="order-actions-section" style="display: none; margin-top: 30px;">
+                <div id="orderActionsSection" class="order-actions-section order-section-hidden">
                     <div class="order-actions-buttons">
                         <!-- 待處理狀態顯示接收按鈕 -->
-                        <button id="acceptOrderBtn" class="btn-primary btn-lg" onclick="showTimeSelectionForCurrentOrder()" style="width: 180px; display: none;">
-                            <span style="margin-right: 8px;">📨</span>
+                        <button id="acceptOrderBtn" class="btn-primary btn-lg order-btn-width order-btn-hidden" onclick="showTimeSelectionForCurrentOrder()">
+                            <span class="order-btn-icon">📨</span>
                             接收訂單
                         </button>
                         <!-- 處理中狀態顯示完成按鈕 -->
-                        <button id="completeOrderBtn" class="btn-success btn-lg" onclick="completeCurrentOrder()" style="width: 180px; display: none;">
-                            <span style="margin-right: 8px;">✓</span>
+                        <button id="completeOrderBtn" class="btn-success btn-lg order-btn-width order-btn-hidden" onclick="completeCurrentOrder()">
+                            <span class="order-btn-icon">✓</span>
                             完成訂單
                         </button>
                     </div>
@@ -7869,7 +8683,7 @@
     <!-- 簡化的圖片預覽容器 -->
     <div id="imagePreview" class="image-preview">
         <span class="close" onclick="closeImagePreview()">&times;</span>
-        <img id="previewImage" src="" alt="預覽圖片" style="display: none;">
+        <img id="previewImage" src="" alt="預覽圖片" class="preview-image-hidden">
     </div>
     <!-- 暫停歷史記錄模態框 - 小巧精美型 -->
     <div id="memberDetailsModal" class="modal">
@@ -7897,7 +8711,7 @@
             <form id="editMemberForm" class="member-form">
                 <input type="hidden" id="editMemberPhone">
                 <div class="form-group">
-                    <label for="editMemberLevel">會員等級 <span id="editMemberPhoneDisplay" style="font-size: 12px; color: #666; font-weight: normal; margin-left: 8px;"></span></label>
+                    <label for="editMemberLevel">會員等級 <span id="editMemberPhoneDisplay" class="edit-member-phone-display"></span></label>
                     <select id="editMemberLevel" onchange="handleMemberLevelChange(this.value)">
                         <option value="basic">基礎會員</option>
                         <option value="tenThousand">滿萬會員</option>
@@ -7918,7 +8732,7 @@
                         <option value="suspended">暫停</option>
                     </select>
                 </div>
-                <div class="form-group" id="remarkGroup" style="display: none;">
+                <div class="form-group form-group-hidden" id="remarkGroup">
                     <label for="editMemberRemark">備註</label>
                     <textarea id="editMemberRemark" rows="3"></textarea>
                 </div>
@@ -7927,7 +8741,7 @@
                     <button type="button" onclick="closeEditMemberModal()">取消</button>
                 </div>
                 <!-- 刪除按鈕 - 僅未審核狀態顯示 -->
-                <div class="delete-button-container" id="deleteMemberContainer" style="display: none;">
+                <div class="delete-button-container form-group-hidden" id="deleteMemberContainer">
                     <button type="button" class="delete-member-btn" onclick="deleteMember()">
                         刪除會員
                     </button>
@@ -8181,42 +8995,108 @@
                 }
             }
 
-            // 初始化表單
-            initializeForm(memberData) {
+            // 初始化表單（修復異步處理）
+            async initializeForm(memberData) {
                 if (!memberData) return false;
 
-                // 設置基本值
-                this.elements.phone.value = memberData.phone || '';
-                this.elements.level.value = memberData.level || 'basic';
-                this.elements.status.value = memberData.status || 'pending';
-                this.elements.remark.value = memberData.remark || '';
-                this.elements.expiry.value = memberData.expiry || '';
+                try {
+                    // 設置基本值
+                    this.elements.phone.value = memberData.phone || '';
+                    this.elements.level.value = memberData.level || 'basic';
+                    this.elements.status.value = memberData.status || 'pending';
+                    this.elements.remark.value = memberData.remark || '';
+                    this.elements.expiry.value = memberData.expiry || '';
 
-                // 應用狀態規則
-                this.applyStateRules(memberData.status || 'pending', memberData.level || 'basic');
+                    // 應用狀態規則
+                    this.applyStateRules(memberData.status || 'pending', memberData.level || 'basic');
 
-                // 初始化日期選擇器
-                this.initializeDatePicker();
+                    // 異步初始化日期選擇器
+                    await this.initializeDatePicker();
 
-                return true;
+                    return true;
+                } catch (error) {
+                    console.error('表單初始化失敗:', error);
+                    return false;
+                }
             }
 
-            // 初始化日期選擇器
-            initializeDatePicker() {
-                if (window.editMemberDatePicker) {
-                    window.editMemberDatePicker.destroy();
-                }
-                window.editMemberDatePicker = createSafeFlatpickr("#editMemberExpiry", {
-                    locale: "zh_tw",
-                    dateFormat: "Y-m-d",
-                    minDate: "today",
-                    disableMobile: "true"
-                });
+            // 初始化日期選擇器（修復異步處理）
+            async initializeDatePicker() {
+                try {
+                    if (window.editMemberDatePicker) {
+                        window.editMemberDatePicker.destroy();
+                        window.editMemberDatePicker = null;
+                    }
 
-                // 檢查日期選擇器是否成功初始化
-                if (!window.editMemberDatePicker) {
-                    console.error('會員到期日選擇器初始化失敗');
+                    // 等待 Flatpickr 載入
+                    await this.waitForFlatpickr();
+
+                    // 初始化日期選擇器
+                    const picker = createSafeFlatpickr("#editMemberExpiry", {
+                        locale: "zh_tw",
+                        dateFormat: "Y-m-d",
+                        minDate: "today",
+                        disableMobile: true
+                    });
+
+                    // 處理異步返回的結果
+                    if (!picker && typeof picker !== 'object') {
+                        // 等待異步初始化完成
+                        await new Promise((resolve) => {
+                            let attempts = 0;
+                            const checkPicker = () => {
+                                if (window.editMemberDatePicker || attempts > 20) {
+                                    resolve();
+                                } else {
+                                    attempts++;
+                                    setTimeout(checkPicker, 100);
+                                }
+                            };
+                            checkPicker();
+                        });
+                    } else {
+                        window.editMemberDatePicker = picker;
+                    }
+
+                    // 最終檢查
+                    if (!window.editMemberDatePicker) {
+                        console.warn('日期選擇器初始化未完成，使用基本輸入框');
+                        const input = document.getElementById('editMemberExpiry');
+                        if (input) {
+                            input.type = 'date';
+                            input.min = new Date().toISOString().split('T')[0];
+                        }
+                    } else {
+                        console.info('會員到期日選擇器初始化成功');
+                    }
+                } catch (error) {
+                    console.error('日期選擇器初始化失敗:', error);
+                    // 降級到原生日期輸入
+                    const input = document.getElementById('editMemberExpiry');
+                    if (input) {
+                        input.type = 'date';
+                        input.min = new Date().toISOString().split('T')[0];
+                    }
                 }
+            }
+
+            // 等待 Flatpickr 載入完成
+            async waitForFlatpickr(maxAttempts = 50) {
+                return new Promise((resolve) => {
+                    let attempts = 0;
+                    const checkFlatpickr = () => {
+                        if (typeof flatpickr !== 'undefined') {
+                            resolve();
+                        } else if (attempts < maxAttempts) {
+                            attempts++;
+                            setTimeout(checkFlatpickr, 100);
+                        } else {
+                            console.warn('Flatpickr 載入超時');
+                            resolve(); // 即使超時也要繼續
+                        }
+                    };
+                    checkFlatpickr();
+                });
             }
         }
 
@@ -8225,15 +9105,20 @@
 
         // ===== 簡化的 UI 管理器 =====
         class EditModalManager {
-            static initializeModal(memberData) {
+            static async initializeModal(memberData) {
                 if (!memberData) return false;
                 
-                // 創建或獲取表單控制器
-                if (!formController) {
-                    formController = new FormStateController();
+                try {
+                    // 創建或獲取表單控制器
+                    if (!formController) {
+                        formController = new FormStateController();
+                    }
+                    
+                    return await formController.initializeForm(memberData);
+                } catch (error) {
+                    console.error('模態框初始化失敗:', error);
+                    return false;
                 }
-                
-                return formController.initializeForm(memberData);
             }
         }
 
@@ -8361,22 +9246,30 @@
 
         // 顯示登錄頁面
         async function showLoginPage() {
-            document.getElementById('loginContainer').style.display = 'flex';
-            document.getElementById('mainContent').classList.remove('authenticated');
+            const { loginContainer, mainContent, adminPassword } = DOMManager.getMultiple([
+                'loginContainer', 'mainContent', 'adminPassword'
+            ]);
+            
+            loginContainer.style.display = 'flex';
+            mainContent.classList.remove('authenticated');
             
             // 檢查設備鎖定狀態
             await checkIPBlocking();
             
             if (!isPermanentlyBlocked && !isTemporaryLocked) {
-                document.getElementById('adminPassword').focus();
+                adminPassword?.focus();
                 setupPasswordListener();
             }
         }
 
         // 顯示主要內容
         function showMainContent() {
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('mainContent').classList.add('authenticated');
+            const { loginContainer, mainContent } = DOMManager.getMultiple([
+                'loginContainer', 'mainContent'
+            ]);
+            
+            loginContainer.style.display = 'none';
+            mainContent.classList.add('authenticated');
         }
 
         // 檢查設備鎖定狀態（使用Firebase）
@@ -8863,94 +9756,92 @@
             }
         };
 
-        // 頁面載入時檢查認證狀態並初始化
+        // 統一頁面初始化 - 徹底清理，避免代碼衝突
         document.addEventListener('DOMContentLoaded', async function() {
-            // 執行代碼完整性檢查
-            if (!validateCodeIntegrity()) {
-                console.error('❌ 代碼完整性檢查失敗，系統可能無法正常工作');
+            // 防止重複初始化
+            if (window.AdminSystem?.isInitialized) {
+                console.warn('系統已初始化，跳過重複執行');
                 return;
             }
             
-            // 記錄 Firebase 可用狀態
-            window.AdminSystem.firebaseAvailable = isFirebaseAvailable();
-            console.info('Firebase 狀態:', window.AdminSystem.firebaseAvailable ? '✅ 可用' : '⚠️ 不可用');
-            
-            // 🚀 立即啟動訂單自動狀態檢查系統（獨立於登錄狀態）
-            if (window.AdminSystem.firebaseAvailable) {
-                setTimeout(() => {
-                    startOrderAutoStatusCheck();
-                }, 3000); // 3秒後啟動，確保 Firebase 完全初始化
-            }
-            
-            // 初始化Flatpickr本地化（避免重複監聽器）
-            if (typeof initializeFlatpickrLocale === 'function') {
-                initializeFlatpickrLocale();
-            }
-            
-            const isAuth = await checkAuthenticationStatus();
-            if (isAuth) {
-                // 如果已認證，執行主要內容初始化
-                initializeAfterLogin();
-                // 標記系統已初始化
-                window.AdminSystem.isInitialized = true;
-                console.info('✅ 後台管理系統初始化完成 - 版本', window.AdminSystem.version);
-            }
-            
-            // 未來代碼衝突檢測 - 檢查關鍵全局變量
-            setTimeout(() => {
-                const criticalGlobals = ['db', 'storage', 'isAuthenticated', 'ADMIN_PASSWORD'];
-                const conflicts = criticalGlobals.filter(name => 
-                    window[name] !== undefined && typeof window[name] !== typeof eval(name)
-                );
+            try {
+                // 1. 清理載入畫面
+                const loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    setTimeout(() => loadingScreen.remove(), 100);
+                }
                 
-                if (conflicts.length > 0) {
-                    console.warn('🚨 檢測到潛在的全局變量衝突:', conflicts);
-                    console.info('建議檢查是否有重複加載的腳本或第三方庫衝突');
-                                 }
-             }, 1000);
-             
-             // 開發者控制台輔助工具 - 在控制台中輸入 AdminSystem.debug() 可查看系統狀態
-             window.AdminSystem.debug = function() {
-                 const report = CodeMaintenanceUtils.generateHealthReport();
-                 console.group('🔧 後台管理系統診斷報告');
-                 console.info('📊 系統版本:', report.version);
-                 console.info('🕒 檢查時間:', report.timestamp);
-                 console.info('🔥 Firebase狀態:', report.firebaseStatus ? '✅ 正常' : '❌ 異常');
-                 console.info('🚀 初始化狀態:', report.isInitialized ? '✅ 已完成' : '⏳ 未完成');
-                 
-                 // 新增自動處理器狀態檢查
-                 console.info('🤖 自動處理器狀態:', AdminAutoProcessor.isRunning ? '✅ 運行中' : '❌ 已停止');
-                 console.info('⏱️ 自動處理器計時器:', AdminAutoProcessor.timer ? '✅ 活躍' : '❌ 無');
-                 
-                 if (report.memoryWarnings.length > 0) {
-                     console.warn('⚠️ 內存警告:', report.memoryWarnings);
-                 } else {
-                     console.info('💚 內存狀態: 正常');
-                 }
-                 
-                 if (report.unusedListeners.length > 0) {
-                     console.warn('🔗 未使用的監聽器:', report.unusedListeners);
-                 } else {
-                     console.info('📡 事件監聽器: 正常');
-                 }
-                 
-                 console.groupEnd();
-                 return report;
-             };
-             
-             // 自動處理器控制台工具
-             window.AdminSystem.autoProcessor = {
-                 status: () => AdminAutoProcessor,
-                 start: startOrderAutoStatusCheck,
-                 stop: stopOrderAutoStatusCheck,
-                 restart: () => {
-                     stopOrderAutoStatusCheck();
-                     setTimeout(startOrderAutoStatusCheck, 1000);
-                 }
-             };
-             
-             console.info('💡 提示: 在控制台輸入 AdminSystem.debug() 可查看系統診斷報告');
+                // 2. 驗證代碼完整性
+                if (!validateCodeIntegrity()) {
+                    throw new Error('代碼完整性檢查失敗');
+                }
+                
+                // 3. 初始化Firebase
+                await SuperLazyLoader.loadFirebase();
+                const firebaseReady = initializeFirebase();
+                if (!firebaseReady) {
+                    console.warn('Firebase初始化失敗，部分功能可能無法使用');
+                }
+                
+                // 4. 記錄Firebase狀態
+                window.AdminSystem.firebaseAvailable = isFirebaseAvailable();
+                
+                // 5. 認證檢查 - 只執行一次
+                const isAuth = await checkAuthenticationStatus();
+                if (isAuth) {
+                    // 初始化主要功能
+                    initializeAfterLogin();
+                    
+                    // 啟動自動處理器
+                    if (window.AdminSystem.firebaseAvailable) {
+                        setTimeout(startOrderAutoStatusCheck, 2000);
+                    }
+                }
+                
+                // 6. 載入其他功能模組
+                SuperLazyLoader.loadDatePicker();
+                
+                // 7. 初始化事件委託系統
+                initializeEventDelegation();
+                
+                // 8. 標記初始化完成
+                window.AdminSystem.isInitialized = true;
+                console.info('✅ 系統初始化完成');
+                
+            } catch (error) {
+                console.error('❌ 系統初始化失敗:', error);
+                alert('系統初始化失敗: ' + error.message);
+            }
         });
+
+        // 統一事件委託系統 - 替代內聯onclick
+        function initializeEventDelegation() {
+            // 處理導航點擊
+            document.querySelectorAll('.nav-item[data-function]').forEach(nav => {
+                nav.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const functionName = nav.getAttribute('data-function');
+                    if (typeof switchFunction === 'function') {
+                        switchFunction(functionName);
+                    }
+                });
+            });
+            
+            // 處理按鈕點擊
+            const buttonHandlers = {
+                'settingsBtn': () => typeof showSettingsModal === 'function' && showSettingsModal(),
+                'logoutBtn': () => typeof logout === 'function' && logout()
+            };
+            
+            Object.entries(buttonHandlers).forEach(([id, handler]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('click', handler);
+                }
+            });
+            
+            console.info('事件委託系統已初始化');
+        }
 
 
     </script>

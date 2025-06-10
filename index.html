@@ -21,23 +21,7 @@
     
     <!-- 樣式表 -->
     <style>
-/* ==========================================================================
-   兼容性架構說明 - 2024年12月更新
-   ========================================================================== */
-
-/* 
- * Gap屬性兼容性策略：
- * 1. Grid Layout: 使用 grid-gap + gap 雙重定義
- * 2. Flexbox: 使用 > * + * 選擇器替代gap
- * 3. 降級支援: @supports查詢提供flexbox降級
- * 
- * 支援範圍：
- * - Android 4.4+ (Webkit)
- * - iOS 9+ (Webkit)  
- * - Chrome 57+ (完整gap支援)
- * - Firefox 52+ (完整gap支援)
- * - Safari 10.1+ (部分gap支援)
- */
+/* 現代CSS架構 - 優化版本 */
 
 /* 緊湊精美設計變量 */
 :root {
@@ -201,10 +185,6 @@ button {
     position: relative;
     z-index: 1;
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     user-select: none;
     min-height: 48px;
 }
@@ -365,10 +345,8 @@ button:active {
 }
 
 .payment-types {
-    display: -ms-grid;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    grid-gap: var(--space-4);
     gap: var(--space-4);
     margin-bottom: var(--space-5);
     transition: var(--transition-normal);
@@ -394,18 +372,7 @@ button:active {
     }
 }
 
-@supports not (display: grid) {
-    .payment-types {
-        display: flex;
-        flex-wrap: wrap;
-        margin: 0 -8px var(--space-5);
-    }
-    
-    .payment-type-card {
-        flex: 1 1 180px;
-        margin: 0 8px var(--space-4);
-    }
-}
+
 
 .payment-type-card {
     border: 1px solid var(--border-color);
@@ -512,7 +479,6 @@ button:active {
     
     .payment-types {
         grid-template-columns: 1fr;
-        grid-gap: var(--space-3);
         gap: var(--space-3);
     }
     
@@ -582,22 +548,8 @@ button:active {
 .order-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    grid-gap: 20px;
-    gap: 20px;
-    margin-top: 20px;
-}
-
-@supports not (display: grid) {
-    .order-list {
-        display: flex;
-        flex-wrap: wrap;
-        margin: 20px -10px 0;
-    }
-    
-    .order-item {
-        flex: 1 1 300px;
-        margin: 0 10px 20px;
-    }
+    gap: var(--space-5);
+    margin-top: var(--space-5);
 }
 
 .order-item {
@@ -623,14 +575,7 @@ button:active {
 }
 
 .order-info {
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    -webkit-flex-direction: column;
-    -ms-flex-direction: column;
     flex-direction: column;
 }
 
@@ -746,21 +691,7 @@ button:active {
 .benefits-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    grid-gap: var(--space-3);
     gap: var(--space-3);
-}
-
-@supports not (display: grid) {
-    .benefits-grid {
-        display: flex;
-        flex-wrap: wrap;
-        margin: 0 -6px;
-    }
-    
-    .benefit-tier {
-        flex: 1 1 200px;
-        margin: 0 6px var(--space-3);
-    }
 }
 
 
@@ -886,36 +817,10 @@ button:active {
 
 /* 其他平台專用樣式 */
 .others-container {
-    display: -ms-grid;
     display: grid;
-    -ms-grid-columns: 1fr var(--space-4) 1fr var(--space-4) 1fr;
     grid-template-columns: 1fr 1fr 1fr;
-    grid-gap: var(--space-4);
     gap: var(--space-4);
     margin-top: var(--space-2);
-}
-
-/* 針對不支援 grid 的瀏覽器提供 fallback */
-@supports not (display: grid) {
-    .others-container {
-        display: -webkit-box;
-        display: -webkit-flex;
-        display: -ms-flexbox;
-        display: flex;
-        -webkit-flex-wrap: wrap;
-        -ms-flex-wrap: wrap;
-        flex-wrap: wrap;
-        margin: var(--space-2) -8px 0;
-    }
-    
-    .others-section {
-        -webkit-box-flex: 1;
-        -webkit-flex: 1;
-        -ms-flex: 1;
-        flex: 1;
-        min-width: 280px;
-        margin: 0 8px var(--space-4);
-    }
 }
 
 .others-section {
@@ -926,13 +831,7 @@ button:active {
 }
 
 .section-title {
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
     margin: 0 0 var(--space-3) 0;
     color: var(--text-primary);
@@ -951,22 +850,9 @@ button:active {
 
 .contact-support {
     text-align: center;
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    -webkit-flex-direction: column;
-    -ms-flex-direction: column;
     flex-direction: column;
-    -webkit-box-pack: center;
-    -webkit-justify-content: center;
-    -ms-flex-pack: center;
     justify-content: center;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
     height: 100%;
     min-height: 200px;
@@ -981,13 +867,7 @@ button:active {
 }
 
 .contact-support-btn {
-    display: -webkit-inline-box;
-    display: -webkit-inline-flex;
-    display: -ms-inline-flexbox;
     display: inline-flex;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
     background: linear-gradient(135deg, #06C755 0%, #05a548 100%);
     color: white;
@@ -1042,7 +922,6 @@ button:active {
 @media (max-width: 1200px) and (min-width: 969px) {
     .others-container {
         grid-template-columns: 1fr 1fr;
-        grid-gap: var(--space-3);
         gap: var(--space-3);
     }
     
@@ -1056,7 +935,6 @@ button:active {
 @media (max-width: 968px) {
     .others-container {
         grid-template-columns: 1fr;
-        grid-gap: var(--space-3);
         gap: var(--space-3);
     }
     
@@ -1075,9 +953,6 @@ button:active {
         padding: 12px 20px;
         font-size: 0.9rem;
         min-height: 48px;
-        -webkit-box-pack: center;
-        -webkit-justify-content: center;
-        -ms-flex-pack: center;
         justify-content: center;
         margin: 0 auto var(--space-3) auto;
         border: none;
@@ -1113,7 +988,6 @@ button:active {
     button, .submit-btn {
         min-height: 50px;
         font-size: 1rem;
-        -webkit-appearance: none;
         appearance: none;
         border: none;
         outline: none;
@@ -1133,11 +1007,8 @@ button:active {
     }
 }
 
-@media screen and (-webkit-min-device-pixel-ratio: 1) {
+@media screen and (min-resolution: 1dppx) {
     button {
-        -webkit-appearance: none;
-        appearance: none;
-        -webkit-border-radius: var(--radius-lg);
         border-radius: var(--radius-lg);
     }
 }
@@ -1308,13 +1179,11 @@ input[readonly] {
 /* 移除數字輸入框的上下箭頭 */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
     appearance: none;
     margin: 0;
 }
 
 input[type="number"] {
-    -moz-appearance: textfield;
     appearance: textfield;
 }
 
@@ -1446,13 +1315,7 @@ input[type="number"] {
 
 /* 新增的樣式 */
 .form-row-flex {
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
     margin-bottom: var(--space-3);
 }
@@ -1510,18 +1373,8 @@ input[type="number"] {
     cursor: pointer;
     transition: var(--transition-normal);
     position: relative;
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    -webkit-flex-direction: column;
-    -ms-flex-direction: column;
     flex-direction: column;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
 }
 
@@ -1588,13 +1441,7 @@ input[type="file"] {
 .success-header {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
     padding: var(--space-6);
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
     color: white;
 }
@@ -1679,7 +1526,7 @@ input[type="file"] {
 
 
 
-/* 未使用的查詢控制樣式 - 已刪除 */
+
 
 .no-orders {
     text-align: center;
@@ -1704,13 +1551,7 @@ input[type="file"] {
     z-index: 1000;
     opacity: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
     font-size: 1rem;
     min-width: 200px;
@@ -1798,13 +1639,7 @@ input[type="file"] {
 }
 
 .brand-features {
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-pack: distribute;
-    -webkit-justify-content: space-around;
-    -ms-flex-pack: distribute;
     justify-content: space-around;
 }
 
@@ -1813,24 +1648,11 @@ input[type="file"] {
 }
 
 .feature-item {
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    -webkit-flex-direction: column;
-    -ms-flex-direction: column;
     flex-direction: column;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
     font-size: 11px;
     color: white;
-    -webkit-box-flex: 1;
-    -webkit-flex: 1;
-    -ms-flex: 1;
     flex: 1;
 }
 
@@ -1896,14 +1718,7 @@ input[type="file"] {
 }
 
 .benefit-cards {
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    -webkit-flex-direction: column;
-    -ms-flex-direction: column;
     flex-direction: column;
 }
 
@@ -1915,13 +1730,7 @@ input[type="file"] {
     background: var(--bg-primary);
     border-radius: 8px;
     padding: 12px;
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
     border: 1px solid var(--border-color);
     transition: all 0.2s ease;
@@ -2099,18 +1908,8 @@ input[type="file"] {
 }
 
 .suspension-actions {
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    -webkit-flex-direction: column;
-    -ms-flex-direction: column;
     flex-direction: column;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
 }
 
@@ -2119,17 +1918,8 @@ input[type="file"] {
 }
 
 .call-support-btn {
-    display: -webkit-inline-box;
-    display: -webkit-inline-flex;
-    display: -ms-inline-flexbox;
     display: inline-flex;
-    -webkit-box-align: center;
-    -webkit-align-items: center;
-    -ms-flex-align: center;
     align-items: center;
-    -webkit-box-pack: center;
-    -webkit-justify-content: center;
-    -ms-flex-pack: center;
     justify-content: center;
     background-color: #06C755;
     color: white;
@@ -2411,27 +2201,7 @@ input[type="file"] {
     }
 }
 
-/* ==========================================================================
-   未來維護建議 - 重要提醒
-   ========================================================================== */
 
-/* 
- * 🔧 維護指南：
- * 1. 新增組件時優先使用 CSS Grid 的 gap 屬性
- * 2. 為舊瀏覽器保留 > * + * margin 降級方案  
- * 3. 定期檢查瀏覽器支援度，適時移除過時前綴
- * 4. 注意 margin collapse 可能影響 > * + * 選擇器效果
- * 
- * ⚠️ 已知問題：
- * - 大量使用 > * + * 可能影響CSS解析效能
- * - Flexbox gap 在 Safari 14以下版本不支援
- * - Grid gap 在 IE 11 需要 -ms-grid-gap 前綴
- * 
- * 📊 支援統計 (2024年12月)：
- * - Flexbox gap: 94.2% 全球支援
- * - Grid gap: 96.1% 全球支援  
- * - CSS Grid: 96.4% 全球支援
- */
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
@@ -2737,15 +2507,15 @@ input[type="file"] {
                                         商品連結
                                     </h4>
                                     <div class="input-card">
-                                        <div class="form-row-flex">
-                                            <span class="label-text">商品連結</span>
-                                            <input type="url" 
-                                                   id="othersProductLink" 
-                                                   name="othersProductLink"
-                                                   placeholder="請貼上商品網址連結" 
-                                                   class="flex-input"
-                                                   autocomplete="url">
-                                        </div>
+                                                                        <div class="form-row-flex">
+                                    <span class="label-text">商品連結</span>
+                                    <input type="text" 
+                                           id="othersProductLink" 
+                                           name="othersProductLink"
+                                           placeholder="請輸入商品連結或商品資訊" 
+                                           class="flex-input"
+                                           autocomplete="off">
+                                </div>
                                         <div class="form-row-flex">
                                             <span class="label-text">備註說明</span>
                                             <input type="text" 
@@ -3016,7 +2786,6 @@ class PaymentApp {
         if (phoneInput) {
             phoneInput.addEventListener('input', this.handlePhoneInput.bind(this));
             phoneInput.addEventListener('keydown', this.handlePhoneKeydown.bind(this));
-            // 添加中文輸入法組合事件處理
             phoneInput.addEventListener('compositionstart', this.handleCompositionStart.bind(this));
             phoneInput.addEventListener('compositionend', this.handleCompositionEnd.bind(this));
         }
@@ -3561,17 +3330,11 @@ class PaymentApp {
                 const tierElement = document.createElement('div');
                 tierElement.className = `benefit-tier ${currentLevel === tier.id ? 'current' : ''}`;
 
-                                // 議價會員邏輯：只有當前用戶也是議價會員時才顯示實際費率，否則顯示神秘的4.XX
-                let displayRate;
-                if (tier.id === 'negotiable') {
-                    // 檢查當前用戶是否為議價會員且狀態為active
-                    const isCurrentUserNegotiable = currentLevel === 'negotiable' && 
-                                                  this.memberData && 
-                                                  this.memberData.status === 'active';
-                    displayRate = isCurrentUserNegotiable ? tier.rate : '4.XX';
-                } else {
-                    displayRate = tier.rate;
-                }
+                                // 議價會員邏輯：只有當前用戶也是議價會員時才顯示實際費率
+                const isCurrentUserNegotiable = tier.id === 'negotiable' && 
+                                               currentLevel === 'negotiable' && 
+                                               this.memberData?.status === 'active';
+                const displayRate = (tier.id === 'negotiable' && !isCurrentUserNegotiable) ? '4.XX' : tier.rate;
                 
                 if (tier.id === 'negotiable') {
                     tierElement.classList.add('negotiable-tier');
@@ -3596,8 +3359,7 @@ class PaymentApp {
                 
                 // 為解鎖的議價會員顯示特殊說明
                 if (tier.id === 'negotiable' && currentLevel === 'negotiable' && 
-                    this.memberData && this.memberData.status === 'active' && 
-                    displayRate !== '4.XX') {
+                    this.memberData?.status === 'active' && displayRate !== '4.XX') {
                     tierCondition.textContent = '🎉 恭喜！您的專屬優惠費率';
                     tierCondition.classList.add('unlocked-condition');
                 } else {
@@ -3612,10 +3374,8 @@ class PaymentApp {
                 const tierRate = document.createElement('div');
                 tierRate.className = 'tier-rate';
                 
-                // 檢查是否為解鎖的議價會員（避免重複條件檢查）
-                const isUnlockedNegotiable = tier.id === 'negotiable' && currentLevel === 'negotiable' && 
-                                           this.memberData && this.memberData.status === 'active' && 
-                                           displayRate !== '4.XX';
+                // 檢查是否為解鎖的議價會員
+                const isUnlockedNegotiable = isCurrentUserNegotiable && displayRate !== '4.XX';
                 
                 if (isUnlockedNegotiable) {
                     // 添加水平布局類
@@ -3990,37 +3750,18 @@ class PaymentApp {
             }]
         };
         
-        // 只儲存有資料的可選字段（強化邏輯：確保不為空字符串）
-        const wechatAccount = document.getElementById('wechatAccount')?.value?.trim();
-        if (wechatAccount && wechatAccount.length > 0) {
-            formData.wechatAccount = wechatAccount;
-        }
+        // 簡化可選字段處理邏輯
+        const optionalFields = [
+            'wechatAccount', 'alipayAccount', 'taobaoLink', 'alibabaLink', 
+            'othersProductLink', 'othersDescription'
+        ];
         
-        const alipayAccount = document.getElementById('alipayAccount')?.value?.trim();
-        if (alipayAccount && alipayAccount.length > 0) {
-            formData.alipayAccount = alipayAccount;
-        }
-        
-        const taobaoLink = document.getElementById('taobaoLink')?.value?.trim();
-        if (taobaoLink && taobaoLink.length > 0) {
-            formData.taobaoLink = taobaoLink;
-        }
-        
-        const alibabaLink = document.getElementById('alibabaLink')?.value?.trim();
-        if (alibabaLink && alibabaLink.length > 0) {
-            formData.alibabaLink = alibabaLink;
-        }
-        
-        // 其他平台專用欄位
-        const othersProductLink = document.getElementById('othersProductLink')?.value?.trim();
-        if (othersProductLink && othersProductLink.length > 0) {
-            formData.othersProductLink = othersProductLink;
-        }
-        
-        const othersDescription = document.getElementById('othersDescription')?.value?.trim();
-        if (othersDescription && othersDescription.length > 0) {
-            formData.othersDescription = othersDescription;
-        }
+        optionalFields.forEach(fieldId => {
+            const value = document.getElementById(fieldId)?.value?.trim();
+            if (value) {
+                formData[fieldId] = value;
+            }
+        });
         
         // 會員到期日（只有非基礎會員且有到期日才記錄）
         if (memberData.expiry && memberData.level !== 'basic') {
@@ -4079,7 +3820,7 @@ class PaymentApp {
             const othersImageFile = document.getElementById('othersImageUpload').files[0];
             const othersProductLink = document.getElementById('othersProductLink').value.trim();
             if (!othersImageFile && !othersProductLink) {
-                return { isValid: false, error: '請輸入商品連結或上傳相關圖片' };
+                return { isValid: false, error: '請輸入商品連結、商品資訊或上傳相關圖片' };
             }
         }
         
@@ -4430,17 +4171,9 @@ class PaymentApp {
         }
     }
 
-    // 檢測是否為觸控設備 - 防護性檢查
+    // 檢測是否為觸控設備
     isTouchDevice() {
-        try {
-            return ('ontouchstart' in window) || 
-                   (navigator.maxTouchPoints > 0) || 
-                   (navigator.msMaxTouchPoints > 0);
-        } catch (error) {
-            // 降級：如果檢測失敗，假設不是觸控設備
-            console.warn('Touch device detection failed:', error);
-            return false;
-        }
+        return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     }
     
     // 統一的行動裝置檢測方法 - 避免魔術數字和重複邏輯
@@ -4521,8 +4254,7 @@ class PaymentApp {
         }
     }
 
-    // 註：自動狀態更新邏輯已移至 admin.html 的系統級處理
-    // 用戶前端只負責顯示，不執行狀態轉換，避免重複處理和衝突
+
 
     // 啟動自動檢查訂單狀態
     startAutoOrderCheck(userPhone) {
@@ -4579,7 +4311,7 @@ class PaymentApp {
         this.cachedSettings = null;
         this.settingsLastFetched = null;
         
-        console.log('應用程式資源已清理');
+        // 應用程式資源已清理完成
     }
 
     // 顯示訂單列表
