@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>後台管理系統</title>
-    <!-- 資源預載入和優化 -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
-    <link rel="preconnect" href="https://www.gstatic.com">
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-    <link rel="dns-prefetch" href="https://www.gstatic.com">
+    <!-- 高性能資源預載入 -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
     
-    <!-- 預載入關鍵資源 -->
+    <!-- 預載入關鍵 Firebase 模組 -->
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js">
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js">
     
-    <!-- 預載入 Chart.js - 固定版本避免未來衝突 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" async></script>
+    <!-- 延遲載入非關鍵 Chart.js -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" as="script">
     
     <!-- 關鍵CSS內聯 -->
     <style id="critical-css">
@@ -110,24 +110,25 @@
             
             async loadFirebase() {
                 try {
-                    await this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js', 1);
-                    await new Promise(resolve => setTimeout(resolve, 50));
+                    // 並行載入所有 Firebase 模組（重大性能提升）
+                    const firebasePromises = [
+                        this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js', 1),
+                        this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js', 1),
+                        this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js', 1)
+                    ];
                     
-                    await this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js', 2);
-                    await new Promise(resolve => setTimeout(resolve, 50));
+                    await Promise.all(firebasePromises);
                     
-                    await this.loadScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js', 3);
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                    
+                    // 更快的可用性檢查
                     let attempts = 0;
-                    while (attempts < 20) {
+                    while (attempts < 15) {
                         if (typeof firebase !== 'undefined' && 
                             typeof firebase.firestore !== 'undefined' && 
                             typeof firebase.storage !== 'undefined') {
-                            console.info('✅ Firebase 庫載入完成');
+                            console.info('✅ Firebase 並行載入完成 (' + attempts * 25 + 'ms)');
                             return true;
                         }
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await new Promise(resolve => setTimeout(resolve, 25));
                         attempts++;
                     }
                     
@@ -142,6 +143,13 @@
             
             async loadDatePicker() {
                 await this.loadScript('https://cdn.jsdelivr.net/npm/flatpickr', 200);
+            },
+            
+            // 延遲載入非關鍵資源
+            loadNonCritical() {
+                requestIdleCallback(() => {
+                    this.loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js', 500);
+                }, { timeout: 2000 });
             }
         };
     </script>
@@ -251,6 +259,92 @@
             background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 200% 100%;
             animation: skeleton-loading 1.5s infinite;
+        }
+        
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* 首屏關鍵樣式 - 僅必需元素 */
+        .navbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 0.75rem 0; position: sticky; top: 0; z-index: 1000; box-shadow: var(--shadow); }
+        .nav-container { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+        .nav-brand { font-size: 1.25rem; font-weight: 700; color: var(--primary-color); }
+        .nav-menu { display: flex; gap: 2rem; list-style: none; }
+        .nav-item { cursor: pointer; padding: 0.5rem 1rem; border-radius: var(--border-radius-small); transition: var(--transition); }
+        .nav-item:hover, .nav-item.active { background: var(--primary-color); color: #fff; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+        .main-content { min-height: calc(100vh - 80px); padding: 2rem 0; }
+        .content-section { background: #fff; border-radius: var(--border-radius); padding: 1.5rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
+        
+        /* 延遲載入指示器 */
+        .lazy-loading { opacity: 0.6; pointer-events: none; }
+        .lazy-loaded { opacity: 1; transition: opacity 0.3s ease; }
+        
+        /* 數據載入狀態樣式 */
+        .data-loading {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            color: transparent;
+        }
+        
+        .data-loaded {
+            animation: dataFadeIn 0.5s ease-out;
+            color: var(--text-color);
+        }
+        
+        @keyframes dataFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 統計卡片樣式優化 */
+        .stat-card {
+            background: #fff;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        
+        .stat-card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        
+        /* 即時更新指示器 */
+        .realtime-indicator {
+            position: relative;
+        }
+        
+        .realtime-indicator::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 8px;
+            height: 8px;
+            background: var(--success-color);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
         }
         
         @keyframes skeleton-loading {
@@ -4604,7 +4698,7 @@
             switchFunction(page);
         }
 
-        // 切換功能頁面
+        // 切換功能頁面（優化版 - 同步顯示預載入數據）
         function switchFunction(functionName) {
             
             // 更新導航選單狀態
@@ -4621,30 +4715,93 @@
             const section = document.getElementById(`${functionName}Section`);
             if (section) section.classList.add('active');
 
-            // 如果切換到首頁，初始化圖表（防重複初始化已在 fastInit 中處理）
-            if (functionName === 'home') {
-                fastChartManager.fastInit();
-            }
-            
-            // 如果切換到訂單管理，初始化訂單列表
-            if (functionName === 'order') {
-                // 延遲初始化，確保DOM載入完成
-                setTimeout(() => {
-                    initializeOrderManagement();
-                }, 50);
-            }
-            
-            // 如果切換到會員管理，立即初始化會員列表監聽
-            if (functionName === 'user') {
-                initializeMembersList();
+            // 根據頁面類型進行優化處理
+            switch(functionName) {
+                case 'home':
+                case 'dashboard':
+                    handleDashboardSwitch();
+                    break;
+                    
+                case 'member':
+                case 'user':
+                    handleMemberSwitch();
+                    break;
+                    
+                case 'order':
+                    handleOrderSwitch();
+                    break;
             }
 
             // 只在非首頁時更新 URL hash
-            if (functionName !== 'home') {
+            if (functionName !== 'home' && functionName !== 'dashboard') {
                 window.location.hash = functionName;
             } else {
                 history.pushState("", document.title, window.location.pathname);
             }
+        }
+        
+        // 處理儀表板頁面切換
+        function handleDashboardSwitch() {
+            // 檢查是否有預載入數據
+            const dashboardData = DataPreloader.getCache('dashboard');
+            if (dashboardData) {
+                console.info('⚡ 使用預載入數據立即顯示儀表板');
+                DataPreloader.updateDashboardUI(dashboardData);
+            }
+            
+            // 初始化圖表（防重複初始化）
+            if (typeof fastChartManager !== 'undefined') {
+                fastChartManager.fastInit();
+            }
+        }
+        
+        // 處理會員頁面切換
+        function handleMemberSwitch() {
+            // 檢查是否有預載入數據
+            const membersData = DataPreloader.getCache('members');
+            if (membersData && membersData.length > 0) {
+                console.info('⚡ 使用預載入數據立即顯示會員列表');
+                
+                // 立即顯示預載入的會員數據
+                const mockSnapshot = {
+                    empty: false,
+                    size: membersData.length,
+                    forEach: (callback) => {
+                        membersData.forEach(member => {
+                            callback({
+                                id: member.id,
+                                data: () => member
+                            });
+                        });
+                    }
+                };
+                
+                renderMembersList(mockSnapshot);
+            }
+            
+            // 確保有實時監聽器
+            setTimeout(() => {
+                if (typeof listManager !== 'undefined') {
+                    listManager.startListening('members');
+                }
+            }, 100);
+        }
+        
+        // 處理訂單頁面切換
+        function handleOrderSwitch() {
+            // 檢查是否有預載入數據
+            const ordersData = DataPreloader.getCache('orders');
+            if (ordersData && ordersData.length > 0) {
+                console.info('⚡ 使用預載入數據立即顯示訂單列表');
+                // 這裡可以添加訂單數據的立即顯示邏輯
+            }
+            
+            // 延遲初始化完整的訂單管理
+            setTimeout(() => {
+                if (typeof initializeOrderManagement === 'function') {
+                    initializeOrderManagement();
+                }
+            }, 50);
         }
 
 
@@ -9128,7 +9285,9 @@
 
     <script>
         // 登錄相關功能
-        let isAuthenticated = false;
+        // 身份驗證狀態管理 - 統一由 AuthManager 控制
+        // ⚠️ 不再使用全局 isAuthenticated 變數，改用 AuthManager 統一管理
+        let isAuthenticated = false; // 保留變數以維持向後兼容，但僅作為狀態同步
         
         // ⚠️ 安全提醒：客戶端密碼僅用於基本訪問控制，重要操作需要服務端驗證
         const ADMIN_PASSWORD = (function() {
@@ -9145,17 +9304,27 @@
         let isPermanentlyBlocked = false;
         let lockoutTimer = null;
 
-        // 檢查登錄狀態 - 使用 Firebase 會話管理
+        // 檢查登錄狀態 - 使用 Firebase 會話管理（修正版）
         async function checkAuthenticationStatus() {
             const hash = window.location.hash.replace('#', '');
             
-            // 如果URL包含#Login，顯示登錄頁面
-            if (hash === 'Login') {
-                await showLoginPage();
-                return false;
+            // ⚠️ 修正邏輯：先檢查實際登錄狀態，再決定是否顯示登錄頁面
+            console.info('🔍 開始身份驗證檢查...');
+            
+            // 優先檢查本地登錄狀態（最快速的檢查）
+            const localAuthStatus = AuthManager.checkAuthenticated();
+            if (localAuthStatus) {
+                console.info('✅ 本地登錄狀態有效，清除 #Login 並顯示主內容');
+                // 清除可能存在的 #Login hash
+                if (hash === 'Login') {
+                    history.replaceState(null, null, window.location.pathname + window.location.search);
+                }
+                isAuthenticated = true;
+                showMainContent();
+                return true;
             }
             
-            // 檢查 Firebase 中的會話狀態
+            // 如果本地狀態無效，檢查 Firebase 中的會話狀態
             try {
                 // 先檢查 Firebase 是否可用
                 if (!isFirebaseAvailable()) {
@@ -9173,7 +9342,9 @@
                     
                     // 檢查會話是否有效且未過期
                     if (sessionData.isAuthenticated && (now - sessionCreated < sessionTimeout)) {
-                        isAuthenticated = true;
+                        // 使用 AuthManager 設置本地狀態
+                        AuthManager.setAuthenticated();
+                        isAuthenticated = true; // 同步舊變數
                         showMainContent();
                         
                         // 更新最後活動時間
@@ -9188,12 +9359,14 @@
                     }
                 }
                 
-                // 備用檢查 sessionStorage（向後兼容）
-                const authStatus = sessionStorage.getItem('adminAuthenticated');
-                if (authStatus === 'true') {
-                    isAuthenticated = true;
+                // 備用檢查本地登錄狀態（持久化）
+                if (AuthManager.checkAuthenticated()) {
+                    isAuthenticated = true; // 同步舊變數
                     showMainContent();
-                    // 同步到 Firebase
+                    console.info('✅ 使用本地 localStorage 恢復登錄狀態');
+                    
+                    // 延長登錄時間並同步到 Firebase
+                    AuthManager.extendSession();
                     await createFirebaseSession(deviceId);
                     return true;
                 }
@@ -9222,36 +9395,43 @@
                     `);
                 }
                 
-                // Firebase 失敗時退回到 sessionStorage
-                const authStatus = sessionStorage.getItem('adminAuthenticated');
-                if (authStatus === 'true') {
-                    console.info('使用本地 sessionStorage 作為備用認證方式');
-                    isAuthenticated = true;
+                // Firebase 失敗時使用本地狀態作為備用
+                if (AuthManager.checkAuthenticated()) {
+                    console.info('✅ 使用本地 localStorage 作為備用認證方式');
+                    isAuthenticated = true; // 同步舊變數
                     showMainContent();
                     return true;
                 } else {
-                    console.warn('本地 sessionStorage 也沒有有效的認證狀態');
+                    console.warn('本地 localStorage 也沒有有效的認證狀態');
                 }
             }
             
-            // 如果沒有登錄且不是登錄頁面，重定向到登錄頁面
-            if (!isAuthenticated) {
+            // 最終檢查：如果所有方式都失敗，顯示登錄頁面
+            console.warn('🚫 所有身份驗證方式都失敗，顯示登錄頁面');
+            
+            // 只有在當前不是登錄頁面時才設置 hash
+            if (hash !== 'Login') {
                 window.location.hash = 'Login';
-                await showLoginPage();
-                return false;
             }
             
-            return isAuthenticated;
+            isAuthenticated = false;
+            await showLoginPage();
+            return false;
         }
 
         // 顯示登錄頁面
         async function showLoginPage() {
+            console.info('🔐 顯示登錄頁面，隱藏主要內容');
             const { loginContainer, mainContent, adminPassword } = DOMManager.getMultiple([
                 'loginContainer', 'mainContent', 'adminPassword'
             ]);
             
-            loginContainer.style.display = 'flex';
-            mainContent.classList.remove('authenticated');
+            if (loginContainer) {
+                loginContainer.style.display = 'flex';
+            }
+            if (mainContent) {
+                mainContent.classList.remove('authenticated');
+            }
             
             // 檢查設備鎖定狀態
             await checkIPBlocking();
@@ -9260,16 +9440,25 @@
                 adminPassword?.focus();
                 setupPasswordListener();
             }
+            
+            console.info('✅ 登錄頁面已顯示');
         }
 
         // 顯示主要內容
         function showMainContent() {
+            console.info('🏠 顯示主要內容，隱藏登錄頁面');
             const { loginContainer, mainContent } = DOMManager.getMultiple([
                 'loginContainer', 'mainContent'
             ]);
             
-            loginContainer.style.display = 'none';
-            mainContent.classList.add('authenticated');
+            if (loginContainer) {
+                loginContainer.style.display = 'none';
+            }
+            if (mainContent) {
+                mainContent.classList.add('authenticated');
+            }
+            
+            console.info('✅ 主要內容已顯示');
         }
 
         // 檢查設備鎖定狀態（使用Firebase）
@@ -9443,10 +9632,9 @@
                 // 登錄成功 - 清除所有記錄
                 await clearLoginAttempts(deviceId);
                 
-                isAuthenticated = true;
-                
-                // 同時設置 sessionStorage 和 Firebase 會話
-                sessionStorage.setItem('adminAuthenticated', 'true');
+                // 使用 AuthManager 設置持久化登錄狀態
+                AuthManager.setAuthenticated();
+                isAuthenticated = true; // 同步舊變數
                 await createFirebaseSession(deviceId);
                 
                 // 清除密碼輸入和錯誤訊息
@@ -9455,6 +9643,7 @@
                 document.getElementById('lockoutMessage').style.display = 'none';
                 
                 // 移除Login hash並顯示主要內容
+                console.info('🎉 登錄成功，清除 #Login hash 並顯示主內容');
                 history.replaceState(null, null, window.location.pathname + window.location.search);
                 showMainContent();
                 
@@ -9591,10 +9780,9 @@
 
         // 登出功能 - 同時清除 Firebase 會話
         async function logout() {
-            isAuthenticated = false;
-            
-            // 清除 sessionStorage 和 Firebase 會話
-            sessionStorage.removeItem('adminAuthenticated');
+            // 使用 AuthManager 清除登錄狀態
+            AuthManager.clearAuthenticated();
+            isAuthenticated = false; // 同步舊變數
             const deviceId = getUserFingerprint();
             await clearFirebaseSession(deviceId);
             
@@ -9682,49 +9870,432 @@
 
         // 設置頁面載入邏輯（移除重複的認證檢查，統一使用DOMContentLoaded）
 
-        // 創建在登錄後執行的初始化函數
-        function initializeAfterLogin() {
+        // 高性能數據預載入系統（支援持久化快取）
+        const DataPreloader = {
+            cache: new Map(),
+            loadingStatus: new Map(),
+            persistentCache: {
+                // 持久化快取管理
+                set(key, data, expireMinutes = 10) {
+                    const item = {
+                        data: data,
+                        timestamp: Date.now(),
+                        expires: Date.now() + (expireMinutes * 60 * 1000)
+                    };
+                    try {
+                        localStorage.setItem(`admin_cache_${key}`, JSON.stringify(item));
+                    } catch (error) {
+                        console.warn('快取儲存失敗:', error);
+                    }
+                },
+                
+                get(key) {
+                    try {
+                        const item = localStorage.getItem(`admin_cache_${key}`);
+                        if (!item) return null;
+                        
+                        const parsed = JSON.parse(item);
+                        if (Date.now() > parsed.expires) {
+                            this.remove(key);
+                            return null;
+                        }
+                        
+                        return parsed.data;
+                    } catch (error) {
+                        console.warn('快取讀取失敗:', error);
+                        return null;
+                    }
+                },
+                
+                remove(key) {
+                    try {
+                        localStorage.removeItem(`admin_cache_${key}`);
+                    } catch (error) {
+                        console.warn('快取清除失敗:', error);
+                    }
+                },
+                
+                clear() {
+                    try {
+                        Object.keys(localStorage).forEach(key => {
+                            if (key.startsWith('admin_cache_')) {
+                                localStorage.removeItem(key);
+                            }
+                        });
+                    } catch (error) {
+                        console.warn('快取全清失敗:', error);
+                    }
+                }
+            },
+            
+            // 並行預載入所有數據（支援快取恢復）
+            async preloadAllData() {
+                if (!isFirebaseAvailable()) {
+                    console.warn('Firebase 不可用，嘗試使用快取數據...');
+                    return this.loadFromCache();
+                }
+                
+                console.info('🚀 開始並行預載入所有數據...');
+                const startTime = performance.now();
+                
+                try {
+                    // 首先嘗試從快取載入（重新整理優化）
+                    const cacheLoadSuccess = this.loadFromCache();
+                    if (cacheLoadSuccess) {
+                        console.info('⚡ 從快取快速載入數據成功');
+                        // 在背景中更新數據
+                        this.updateDataInBackground();
+                        return true;
+                    }
+                    
+                    // 並行載入所有核心數據
+                    const dataPromises = [
+                        this.preloadDashboardData(),
+                        this.preloadMembersData(),
+                        this.preloadOrdersData()
+                    ];
+                    
+                    const results = await Promise.allSettled(dataPromises);
+                    
+                    // 記錄載入結果
+                    results.forEach((result, index) => {
+                        const dataType = ['儀表板', '會員', '訂單'][index];
+                        if (result.status === 'fulfilled') {
+                            console.info(`✅ ${dataType}數據預載入成功`);
+                        } else {
+                            console.warn(`⚠️ ${dataType}數據預載入失敗:`, result.reason);
+                        }
+                    });
+                    
+                    const loadTime = performance.now() - startTime;
+                    console.info(`📊 數據預載入完成，耗時: ${Math.round(loadTime)}ms`);
+                    
+                    return true;
+                } catch (error) {
+                    console.error('❌ 數據預載入失敗:', error);
+                    // 嘗試從快取恢復
+                    return this.loadFromCache();
+                }
+            },
+            
+            // 從快取載入數據（重新整理時立即可用）
+            loadFromCache() {
+                try {
+                    const dashboardData = this.persistentCache.get('dashboard');
+                    const membersData = this.persistentCache.get('members');
+                    const ordersData = this.persistentCache.get('orders');
+                    
+                    let hasAnyCache = false;
+                    
+                    if (dashboardData) {
+                        this.cache.set('dashboard', dashboardData);
+                        this.updateDashboardUI(dashboardData);
+                        hasAnyCache = true;
+                        console.info('📦 儀表板快取載入成功');
+                    }
+                    
+                    if (membersData) {
+                        this.cache.set('members', membersData);
+                        hasAnyCache = true;
+                        console.info('📦 會員快取載入成功');
+                    }
+                    
+                    if (ordersData) {
+                        this.cache.set('orders', ordersData);
+                        hasAnyCache = true;
+                        console.info('📦 訂單快取載入成功');
+                    }
+                    
+                    if (hasAnyCache) {
+                        console.info('⚡ 快取數據載入完成，頁面立即可用');
+                    }
+                    
+                    return hasAnyCache;
+                } catch (error) {
+                    console.error('快取載入失敗:', error);
+                    return false;
+                }
+            },
+            
+            // 在背景中更新數據
+            async updateDataInBackground() {
+                console.info('🔄 在背景中更新數據...');
+                
+                try {
+                    // 延遲 1 秒後開始背景更新，不影響使用者體驗
+                    setTimeout(async () => {
+                        const dataPromises = [
+                            this.preloadDashboardData(),
+                            this.preloadMembersData(),
+                            this.preloadOrdersData()
+                        ];
+                        
+                        await Promise.allSettled(dataPromises);
+                        console.info('🔄 背景數據更新完成');
+                    }, 1000);
+                } catch (error) {
+                    console.error('背景更新失敗:', error);
+                }
+            },
+            
+            // 預載入儀表板數據
+            async preloadDashboardData() {
+                const dashboardData = {};
+                
+                // 並行載入儀表板統計數據
+                const [todayOrders, pendingOrders, completedOrders, totalMembers] = await Promise.all([
+                    this.getTodayOrdersCount(),
+                    this.getPendingOrdersCount(),
+                    this.getCompletedTodayCount(),
+                    this.getTotalMembersCount()
+                ]);
+                
+                dashboardData.todayOrders = todayOrders;
+                dashboardData.pendingOrders = pendingOrders;
+                dashboardData.completedOrders = completedOrders;
+                dashboardData.totalMembers = totalMembers;
+                
+                this.cache.set('dashboard', dashboardData);
+                
+                // 保存到持久化快取
+                this.persistentCache.set('dashboard', dashboardData, 10);
+                
+                // 立即更新 UI
+                this.updateDashboardUI(dashboardData);
+                
+                return dashboardData;
+            },
+            
+            // 預載入會員數據
+            async preloadMembersData() {
+                const snapshot = await db.collection('members').get();
+                const membersData = [];
+                
+                snapshot.forEach(doc => {
+                    membersData.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                this.cache.set('members', membersData);
+                
+                // 保存到持久化快取
+                this.persistentCache.set('members', membersData, 15);
+                
+                return membersData;
+            },
+            
+            // 預載入訂單數據（限制數量以提升性能）
+            async preloadOrdersData() {
+                const snapshot = await db.collection('orders')
+                    .orderBy('createdAt', 'desc')
+                    .limit(100) // 限制載入數量
+                    .get();
+                    
+                const ordersData = [];
+                snapshot.forEach(doc => {
+                    ordersData.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                this.cache.set('orders', ordersData);
+                
+                // 保存到持久化快取
+                this.persistentCache.set('orders', ordersData, 5);
+                
+                return ordersData;
+            },
+            
+            // 取得今日訂單數
+            async getTodayOrdersCount() {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const snapshot = await db.collection('orders')
+                    .where('createdAt', '>=', firebase.firestore.Timestamp.fromDate(today))
+                    .get();
+                    
+                return snapshot.size;
+            },
+            
+            // 取得待處理訂單數
+            async getPendingOrdersCount() {
+                const snapshot = await db.collection('orders')
+                    .where('status', 'in', ['pending', 'processing'])
+                    .get();
+                    
+                return snapshot.size;
+            },
+            
+            // 取得今日完成訂單數
+            async getCompletedTodayCount() {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const snapshot = await db.collection('orders')
+                    .where('status', '==', 'completed')
+                    .get();
+                    
+                let count = 0;
+                snapshot.forEach(doc => {
+                    const order = doc.data();
+                    if (order.completedAt) {
+                        const completedDate = new Date(order.completedAt);
+                        if (completedDate >= today) {
+                            count++;
+                        }
+                    }
+                });
+                
+                return count;
+            },
+            
+            // 取得總會員數
+            async getTotalMembersCount() {
+                const snapshot = await db.collection('members').get();
+                return snapshot.size;
+            },
+            
+            // 立即更新儀表板 UI
+            updateDashboardUI(data) {
+                const elements = {
+                    'todayOrders': data.todayOrders || 0,
+                    'pendingOrders': data.pendingOrders || 0,
+                    'processingOrders': data.completedOrders || 0,
+                    'totalMembers': data.totalMembers || 0
+                };
+                
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                        element.classList.add('data-loaded'); // 添加載入完成樣式
+                    }
+                });
+            },
+            
+            // 取得快取數據
+            getCache(key) {
+                return this.cache.get(key);
+            },
+            
+            // 檢查數據是否已載入
+            isDataLoaded(key) {
+                return this.cache.has(key);
+            }
+        };
+
+        // 創建在登錄後執行的初始化函數（全面重構）
+        async function initializeAfterLogin() {
             try {
-                // 初始化DOM緩存系統
+                // 1. 初始化DOM緩存系統
                 DOMCache.preload();
                 
-                // 初始化統一列表管理器配置
+                // 2. 初始化統一列表管理器配置
                 initializeListConfigs();
                 
-                // 立即顯示首頁
+                // 3. 立即顯示首頁
                 handleHashChange();
                 
-                // 異步初始化各個組件（不阻塞）
-                setTimeout(() => {
+                // 4. 並行預載入所有數據（關鍵優化）
+                const dataPreloadTimer = PerformanceMonitor.measureDataPreload();
+                const preloadSuccess = await DataPreloader.preloadAllData();
+                dataPreloadTimer();
+                
+                // 5. 基於預載入數據同步初始化所有組件
+                if (preloadSuccess) {
+                    // 同步初始化所有組件（不使用 setTimeout）
+                    initializeDashboardSync();
+                    initializeMembersListSync();
+                    
+                    // 設置實時監聽器（用於數據更新）
+                    setTimeout(() => {
+                        setupRealtimeListeners();
+                    }, 1000);
+                } else {
+                    // 回退到原有的異步載入方式
+                    console.warn('數據預載入失敗，使用回退載入方式');
                     initializeDashboard();
-                }, 0);
+                    setTimeout(() => initializeMembersList(), 100);
+                }
                 
+                // 6. 延遲初始化訂單管理（僅在需要時）
+                const currentHash = window.location.hash.replace('#', '');
+                if (currentHash === 'order') {
+                    setTimeout(() => initializeOrderManagement(), 200);
+                }
+                
+                // 7. 延遲執行會員到期檢查
                 setTimeout(() => {
-                    initializeMembersList();
-                }, 100);
-                
-                // 只有在首次載入時初始化訂單監聽，切換頁面時由switchFunction處理
-                setTimeout(() => {
-                    const currentHash = window.location.hash.replace('#', '');
-                    if (currentHash === 'order') {
-                        initializeOrderManagement();
-                    }
-                }, 200);
-                
-                // 延遲執行會員到期檢查，避免影響載入速度
-                setTimeout(() => {
-                    checkMemberExpiry(); // 5分鐘後執行一次
-                    setInterval(checkMemberExpiry, 60 * 60 * 1000); // 然後每小時執行一次
-                }, 300000); // 5分鐘延遲
-                
-                // 注意：initializeLastUpdatedFields 已被禁用以避免性能問題
-                // 這個功能會拉取所有會員和訂單資料，在資料量大時會造成嚴重性能問題
-                // lastUpdated 字段初始化已跳過（避免性能問題）
+                    checkMemberExpiry();
+                    setInterval(checkMemberExpiry, 60 * 60 * 1000);
+                }, 300000);
                 
             } catch (error) {
-                console.error('Error initializing page after login:', error);
+                console.error('頁面初始化失敗:', error);
                 alert('頁面初始化失敗: ' + error.message);
             }
+        }
+        
+        // 同步初始化儀表板（使用預載入數據）
+        function initializeDashboardSync() {
+            const dashboardData = DataPreloader.getCache('dashboard');
+            if (dashboardData) {
+                console.info('✅ 使用預載入數據同步顯示儀表板');
+                DataPreloader.updateDashboardUI(dashboardData);
+            }
+            
+            // 延遲載入圖表
+            setTimeout(() => {
+                if (typeof Chart !== 'undefined') {
+                    initializeCharts();
+                } else {
+                    const waitForChart = () => {
+                        if (typeof Chart !== 'undefined') {
+                            initializeCharts();
+                        } else {
+                            setTimeout(waitForChart, 200);
+                        }
+                    };
+                    setTimeout(waitForChart, 1000);
+                }
+            }, 500);
+        }
+        
+        // 同步初始化會員列表（使用預載入數據）
+        function initializeMembersListSync() {
+            const membersData = DataPreloader.getCache('members');
+            if (membersData) {
+                console.info('✅ 使用預載入數據同步顯示會員列表');
+                // 轉換為 Firestore snapshot 格式以兼容現有邏輯
+                const mockSnapshot = {
+                    empty: membersData.length === 0,
+                    size: membersData.length,
+                    forEach: (callback) => {
+                        membersData.forEach(member => {
+                            callback({
+                                id: member.id,
+                                data: () => member
+                            });
+                        });
+                    }
+                };
+                
+                // 如果目前在會員頁面，立即渲染
+                if (window.location.hash.replace('#', '') === 'member') {
+                    renderMembersList(mockSnapshot);
+                }
+            }
+        }
+        
+        // 設置實時監聽器（用於數據更新）
+        function setupRealtimeListeners() {
+            console.info('🔄 設置實時數據監聽器');
+            setupDashboardListeners();
+            listManager.startListening('members');
         }
 
         // 監聽hash變化（包括登錄頁面）
@@ -9737,22 +10308,379 @@
             }
         });
 
+        // 代碼完整性檢查和衝突預防
+        function validateCodeIntegrity() {
+            const issues = [];
+            
+            // 檢查身份驗證函數是否存在
+            if (typeof checkAuthenticationStatus !== 'function') {
+                issues.push('❌ checkAuthenticationStatus 函數未定義');
+            }
+            if (typeof AuthManager === 'undefined') {
+                issues.push('❌ AuthManager 未定義');
+            }
+            
+            // 檢查 DOM 元素是否存在
+            if (!document.getElementById('loginContainer')) {
+                issues.push('❌ loginContainer 元素不存在');
+            }
+            if (!document.getElementById('mainContent')) {
+                issues.push('❌ mainContent 元素不存在');
+            }
+            
+            // 檢查是否有重複的 DOMContentLoaded 監聽器
+            const scripts = document.querySelectorAll('script');
+            let domContentLoadedCount = 0;
+            scripts.forEach(script => {
+                if (script.textContent.includes('DOMContentLoaded')) {
+                    domContentLoadedCount++;
+                }
+            });
+            
+            if (domContentLoadedCount > 1) {
+                issues.push(`⚠️ 發現 ${domContentLoadedCount} 個 DOMContentLoaded 監聽器，可能導致重複初始化`);
+            }
+            
+            // 輸出檢查結果
+            if (issues.length === 0) {
+                console.info('✅ 代碼完整性檢查通過');
+                return true;
+            } else {
+                console.group('⚠️ 代碼完整性檢查發現問題');
+                issues.forEach(issue => console.warn(issue));
+                console.groupEnd();
+                return false;
+            }
+        }
+        
         // 代碼衝突預防和版本管理
         if (typeof window.AdminSystem !== 'undefined') {
             console.warn('⚠️ AdminSystem 命名空間已存在，可能存在代碼衝突');
             console.info('當前版本:', window.AdminSystem.version);
         }
         
+        // 重新整理優化檢測
+        const RefreshOptimizer = {
+            isRefresh: performance.navigation?.type === 1 || 
+                      performance.getEntriesByType('navigation')[0]?.type === 'reload',
+            
+            cacheHitRate: 0,
+            loadMethod: 'unknown',
+            
+            init() {
+                if (this.isRefresh) {
+                    console.info('🔄 檢測到頁面重新整理，啟用快速載入模式');
+                    this.loadMethod = 'refresh-optimized';
+                } else {
+                    console.info('🆕 首次載入頁面');
+                    this.loadMethod = 'first-load';
+                }
+                
+                // 檢測快取命中率
+                this.measureCachePerformance();
+            },
+            
+            measureCachePerformance() {
+                // 檢測資源載入來源
+                const entries = performance.getEntriesByType('resource');
+                let cacheHits = 0;
+                let totalResources = 0;
+                
+                entries.forEach(entry => {
+                    if (entry.transferSize === 0 && entry.decodedBodySize > 0) {
+                        cacheHits++;
+                    }
+                    totalResources++;
+                });
+                
+                this.cacheHitRate = totalResources > 0 ? (cacheHits / totalResources * 100).toFixed(1) : 0;
+                console.info(`📊 快取命中率: ${this.cacheHitRate}%`);
+            }
+        };
+
+        // 身份驗證狀態管理器（重新整理持久化）
+        const AuthManager = {
+            SESSION_TIMEOUT: 24 * 60 * 60 * 1000, // 24小時
+            
+            // 設置登錄狀態
+            setAuthenticated() {
+                const now = Date.now();
+                localStorage.setItem('adminAuthenticated', 'true');
+                localStorage.setItem('adminLoginTime', now.toString());
+                console.info('✅ 登錄狀態已設置', new Date(now).toLocaleString());
+            },
+            
+            // 檢查登錄狀態
+            checkAuthenticated() {
+                const authStatus = localStorage.getItem('adminAuthenticated');
+                const loginTime = localStorage.getItem('adminLoginTime');
+                
+                if (authStatus !== 'true' || !loginTime) {
+                    return false;
+                }
+                
+                const now = Date.now();
+                const loginTimestamp = parseInt(loginTime);
+                const isValid = now - loginTimestamp < this.SESSION_TIMEOUT;
+                
+                if (!isValid) {
+                    this.clearAuthenticated();
+                    console.info('🔄 登錄狀態已過期');
+                    return false;
+                }
+                
+                return true;
+            },
+            
+            // 清除登錄狀態
+            clearAuthenticated() {
+                localStorage.removeItem('adminAuthenticated');
+                localStorage.removeItem('adminLoginTime');
+                console.info('🔄 登錄狀態已清除');
+            },
+            
+            // 延長登錄時間
+            extendSession() {
+                if (this.checkAuthenticated()) {
+                    const now = Date.now();
+                    localStorage.setItem('adminLoginTime', now.toString());
+                    console.info('⏰ 登錄時間已延長', new Date(now).toLocaleString());
+                }
+            },
+            
+            // 取得登錄資訊
+            getLoginInfo() {
+                const authStatus = localStorage.getItem('adminAuthenticated');
+                const loginTime = localStorage.getItem('adminLoginTime');
+                
+                if (authStatus === 'true' && loginTime) {
+                    const loginTimestamp = parseInt(loginTime);
+                    const now = Date.now();
+                    const elapsed = now - loginTimestamp;
+                    const remaining = this.SESSION_TIMEOUT - elapsed;
+                    
+                    return {
+                        isAuthenticated: this.checkAuthenticated(),
+                        loginTime: new Date(loginTimestamp),
+                        elapsedTime: elapsed,
+                        remainingTime: remaining,
+                        expiryTime: new Date(loginTimestamp + this.SESSION_TIMEOUT)
+                    };
+                }
+                
+                return {
+                    isAuthenticated: false,
+                    loginTime: null,
+                    elapsedTime: 0,
+                    remainingTime: 0,
+                    expiryTime: null
+                };
+            }
+        };
+
         // 設置版本信息和初始化狀態
         window.AdminSystem = {
-            version: '2.2.0', // 更新版本號（加入系統級自動處理）
+            version: '2.4.2', // 身份驗證修正版本
             lastUpdated: new Date().toISOString(),
             isInitialized: false,
             firebaseAvailable: false,
-            autoProcessorVersion: '1.0.0', // 自動處理器版本
+            autoProcessorVersion: '1.0.0',
             features: {
                 systemAutoProcessor: true,
-                userAutoProcessorDisabled: true // 標記用戶端自動處理已停用
+                userAutoProcessorDisabled: true,
+                parallelLoading: true, // 並行載入功能
+                criticalPathOptimization: true, // 關鍵路徑優化
+                refreshOptimization: true, // 重新整理優化
+                persistentCache: true, // 持久化快取
+                serviceWorkerCache: true // Service Worker 快取
+            },
+            performance: {
+                startTime: performance.now(),
+                firebaseLoadTime: 0,
+                firstContentfulPaint: 0,
+                loadComplete: 0,
+                cacheHitRate: 0,
+                loadMethod: 'unknown'
+            },
+            refresh: RefreshOptimizer
+        };
+        
+        // 效能監控（增強版）
+        const PerformanceMonitor = {
+            logMetric(name, value) {
+                window.AdminSystem.performance[name] = value;
+                console.info(`📊 ${name}: ${Math.round(value)}ms`);
+            },
+            
+            measureFirebaseLoad() {
+                const start = performance.now();
+                return () => {
+                    this.logMetric('firebaseLoadTime', performance.now() - start);
+                };
+            },
+            
+            measureDataPreload() {
+                const start = performance.now();
+                return () => {
+                    this.logMetric('dataPreloadTime', performance.now() - start);
+                };
+            },
+            
+            measureTotalLoad() {
+                window.addEventListener('load', () => {
+                    this.logMetric('loadComplete', performance.now() - window.AdminSystem.performance.startTime);
+                    this.generateLoadReport();
+                });
+            },
+            
+            // 生成載入效能報告（增強版）
+            generateLoadReport() {
+                const perf = window.AdminSystem.performance;
+                const report = {
+                    載入方式: perf.loadMethod === 'refresh-optimized' ? '重新整理優化' : '首次載入',
+                    總載入時間: Math.round(perf.loadComplete) + 'ms',
+                    Firebase載入: Math.round(perf.firebaseLoadTime || 0) + 'ms',
+                    數據預載入: Math.round(perf.dataPreloadTime || 0) + 'ms',
+                    首屏渲染: Math.round(perf.firstContentfulPaint || 0) + 'ms',
+                    快取命中率: perf.cacheHitRate + '%'
+                };
+                
+                console.group('🚀 頁面載入效能報告');
+                Object.entries(report).forEach(([key, value]) => {
+                    const icon = this.getMetricIcon(key);
+                    console.info(`${icon} ${key}: ${value}`);
+                });
+                console.groupEnd();
+                
+                // 評估載入效能（針對重新整理優化）
+                const totalTime = perf.loadComplete;
+                const isRefresh = perf.loadMethod === 'refresh-optimized';
+                const cacheRate = parseFloat(perf.cacheHitRate);
+                
+                let grade = this.calculateGrade(totalTime, isRefresh, cacheRate);
+                let performance = this.getPerformanceAnalysis(totalTime, isRefresh, cacheRate);
+                
+                console.info(`⭐ 載入效能評級: ${grade} (${Math.round(totalTime)}ms)`);
+                console.info(`📈 ${performance}`);
+                
+                // Service Worker 狀態檢查
+                this.checkServiceWorkerStatus();
+            },
+            
+            getMetricIcon(key) {
+                const icons = {
+                    '載入方式': '🔄',
+                    '總載入時間': '⏱️',
+                    'Firebase載入': '🔥',
+                    '數據預載入': '📊',
+                    '首屏渲染': '🎨',
+                    '快取命中率': '💾'
+                };
+                return icons[key] || '📋';
+            },
+            
+            calculateGrade(totalTime, isRefresh, cacheRate) {
+                let grade = 'A+';
+                
+                if (isRefresh) {
+                    // 重新整理時的評分標準更嚴格
+                    if (totalTime > 2000 || cacheRate < 30) grade = 'C';
+                    else if (totalTime > 1000 || cacheRate < 50) grade = 'B';
+                    else if (totalTime > 500 || cacheRate < 70) grade = 'A';
+                } else {
+                    // 首次載入的評分標準
+                    if (totalTime > 3000) grade = 'C';
+                    else if (totalTime > 2000) grade = 'B';
+                    else if (totalTime > 1000) grade = 'A';
+                }
+                
+                return grade;
+            },
+            
+            getPerformanceAnalysis(totalTime, isRefresh, cacheRate) {
+                if (isRefresh) {
+                    if (totalTime < 500 && cacheRate > 70) {
+                        return '重新整理優化效果優秀！快取策略運作良好。';
+                    } else if (cacheRate < 30) {
+                        return '快取命中率偏低，建議檢查 Service Worker 狀態。';
+                    } else {
+                        return '重新整理性能良好，仍有優化空間。';
+                    }
+                } else {
+                    if (totalTime < 1000) {
+                        return '首次載入速度優秀！';
+                    } else {
+                        return '首次載入性能良好，快取建立後會更快。';
+                    }
+                }
+            },
+            
+            async checkServiceWorkerStatus() {
+                try {
+                    const status = await ServiceWorkerManager.getCacheStatus();
+                    if (status) {
+                        console.info(`🔧 Service Worker: 已快取 ${status.cachedResourcesCount} 個資源 (${status.cacheSize}KB)`);
+                    } else {
+                        console.warn('⚠️ Service Worker 未啟用或不支援');
+                    }
+                } catch (error) {
+                    console.warn('Service Worker 狀態檢查失敗:', error);
+                }
+            }
+        };
+        
+        PerformanceMonitor.measureTotalLoad();
+
+        // Service Worker 註冊（重新整理優化）
+        const ServiceWorkerManager = {
+            async register() {
+                if ('serviceWorker' in navigator) {
+                    try {
+                        const registration = await navigator.serviceWorker.register('/sw.js');
+                        console.info('🔧 Service Worker 註冊成功');
+                        
+                        // 監聽更新
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.info('🔄 Service Worker 已更新，將在下次載入時生效');
+                                }
+                            });
+                        });
+                        
+                        return registration;
+                    } catch (error) {
+                        console.warn('⚠️ Service Worker 註冊失敗:', error);
+                        return null;
+                    }
+                } else {
+                    console.warn('瀏覽器不支援 Service Worker');
+                    return null;
+                }
+            },
+            
+            async getCacheStatus() {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    return new Promise((resolve) => {
+                        const channel = new MessageChannel();
+                        channel.port1.onmessage = (event) => {
+                            resolve(event.data.payload);
+                        };
+                        
+                        navigator.serviceWorker.controller.postMessage(
+                            { type: 'GET_CACHE_STATUS' },
+                            [channel.port2]
+                        );
+                    });
+                }
+                return null;
+            },
+            
+            async clearCache() {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+                }
             }
         };
 
@@ -9765,19 +10693,29 @@
             }
             
             try {
-                // 1. 清理載入畫面
+                // 0. 初始化重新整理優化檢測
+                RefreshOptimizer.init();
+                window.AdminSystem.performance.cacheHitRate = RefreshOptimizer.cacheHitRate;
+                window.AdminSystem.performance.loadMethod = RefreshOptimizer.loadMethod;
+                
+                // 1. 註冊 Service Worker（最高優先級）
+                ServiceWorkerManager.register();
+                
+                // 2. 清理載入畫面
                 const loadingScreen = document.getElementById('loadingScreen');
                 if (loadingScreen) {
                     setTimeout(() => loadingScreen.remove(), 100);
                 }
                 
-                // 2. 驗證代碼完整性
+                // 3. 驗證代碼完整性
                 if (!validateCodeIntegrity()) {
                     throw new Error('代碼完整性檢查失敗');
                 }
                 
-                // 3. 初始化Firebase
-                await SuperLazyLoader.loadFirebase();
+                // 3. 初始化Firebase（優化載入）
+                const firebaseTimer = PerformanceMonitor.measureFirebaseLoad();
+                await SuperLazyLoader.loadFirebase();  
+                firebaseTimer();
                 const firebaseReady = initializeFirebase();
                 if (!firebaseReady) {
                     console.warn('Firebase初始化失敗，部分功能可能無法使用');
@@ -9786,9 +10724,24 @@
                 // 4. 記錄Firebase狀態
                 window.AdminSystem.firebaseAvailable = isFirebaseAvailable();
                 
-                // 5. 認證檢查 - 只執行一次
+                // 5. 認證檢查 - 支援重新整理恢復
+                console.info('🔄 檢查身份驗證狀態...');
+                
+                // 先檢查本地登錄狀態
+                const localAuth = AuthManager.checkAuthenticated();
+                if (localAuth) {
+                    console.info('✅ 發現本地登錄狀態，嘗試恢復...');
+                    const loginInfo = AuthManager.getLoginInfo();
+                    console.info('📊 登錄資訊:', {
+                        登錄時間: loginInfo.loginTime?.toLocaleString(),
+                        剩餘時間: Math.round(loginInfo.remainingTime / 1000 / 60) + ' 分鐘',
+                        過期時間: loginInfo.expiryTime?.toLocaleString()
+                    });
+                }
+                
                 const isAuth = await checkAuthenticationStatus();
                 if (isAuth) {
+                    console.info('🎉 身份驗證成功，初始化管理面板');
                     // 初始化主要功能
                     initializeAfterLogin();
                     
@@ -9796,10 +10749,13 @@
                     if (window.AdminSystem.firebaseAvailable) {
                         setTimeout(startOrderAutoStatusCheck, 2000);
                     }
+                } else {
+                    console.info('❌ 身份驗證失敗，顯示登錄頁面');
                 }
                 
-                // 6. 載入其他功能模組
+                // 6. 延遲載入非關鍵功能模組
                 SuperLazyLoader.loadDatePicker();
+                SuperLazyLoader.loadNonCritical();
                 
                 // 7. 初始化事件委託系統
                 initializeEventDelegation();
@@ -9813,6 +10769,114 @@
                 alert('系統初始化失敗: ' + error.message);
             }
         });
+
+        // 登錄調試工具（管理員專用）- 升級版
+        window.AuthDebug = {
+            // 查看登錄狀態
+            status() {
+                const info = AuthManager.getLoginInfo();
+                console.table({
+                    '登錄狀態': info.isAuthenticated ? '✅ 已登錄' : '❌ 未登錄',
+                    '登錄時間': info.loginTime ? info.loginTime.toLocaleString() : '無',
+                    '已登錄時間': info.elapsedTime ? Math.round(info.elapsedTime / 1000 / 60) + ' 分鐘' : '無',
+                    '剩餘時間': info.remainingTime > 0 ? Math.round(info.remainingTime / 1000 / 60) + ' 分鐘' : '無',
+                    '過期時間': info.expiryTime ? info.expiryTime.toLocaleString() : '無'
+                });
+                return info;
+            },
+            
+            // 延長登錄時間
+            extend() {
+                AuthManager.extendSession();
+                console.info('✅ 登錄時間已延長');
+                this.status();
+            },
+            
+            // 清除登錄狀態
+            clear() {
+                AuthManager.clearAuthenticated();
+                console.info('🔄 登錄狀態已清除');
+            },
+            
+            // 模擬重新整理測試
+            async testRefresh() {
+                console.info('🧪 測試重新整理恢復...');
+                const beforeRefresh = AuthManager.checkAuthenticated();
+                console.info('重新整理前狀態:', beforeRefresh ? '✅ 已登錄' : '❌ 未登錄');
+                
+                // 模擬頁面重新載入的認證檢查
+                const afterRefresh = await checkAuthenticationStatus();
+                console.info('重新整理後狀態:', afterRefresh ? '✅ 已登錄' : '❌ 未登錄');
+                
+                return {
+                    beforeRefresh,
+                    afterRefresh,
+                    success: beforeRefresh === afterRefresh
+                };
+            },
+            
+            // 診斷身份驗證問題
+            async diagnose() {
+                console.group('🔍 身份驗證診斷報告');
+                
+                // 檢查本地儲存
+                const localAuth = localStorage.getItem('adminAuthenticated');
+                const loginTime = localStorage.getItem('adminLoginTime');
+                console.info('📱 本地儲存:', {
+                    adminAuthenticated: localAuth,
+                    adminLoginTime: loginTime ? new Date(parseInt(loginTime)).toLocaleString() : null
+                });
+                
+                // 檢查 AuthManager 狀態
+                const authStatus = AuthManager.checkAuthenticated();
+                console.info('🔐 AuthManager 狀態:', authStatus ? '✅ 有效' : '❌ 無效');
+                
+                // 檢查全域變數
+                console.info('🌐 全域變數 isAuthenticated:', isAuthenticated);
+                
+                // 檢查 URL hash
+                const currentHash = window.location.hash;
+                console.info('🔗 當前 URL hash:', currentHash || '(無)');
+                
+                // 檢查 DOM 元素顯示狀態
+                const loginContainer = document.getElementById('loginContainer');
+                const mainContent = document.getElementById('mainContent');
+                console.info('🎨 DOM 顯示狀態:', {
+                    loginContainer: loginContainer ? getComputedStyle(loginContainer).display : '(不存在)',
+                    mainContent: mainContent ? mainContent.classList.contains('authenticated') : '(不存在)'
+                });
+                
+                console.groupEnd();
+                
+                return {
+                    localStorage: { localAuth, loginTime },
+                    authManager: authStatus,
+                    globalVar: isAuthenticated,
+                    urlHash: currentHash,
+                    dom: {
+                        loginVisible: loginContainer?.style.display !== 'none',
+                        mainAuthenticated: mainContent?.classList.contains('authenticated')
+                    }
+                };
+            },
+            
+            // 強制重置身份驗證
+            async reset() {
+                console.info('🔄 強制重置身份驗證狀態...');
+                
+                // 清除所有狀態
+                AuthManager.clearAuthenticated();
+                isAuthenticated = false;
+                
+                // 清除 URL hash
+                history.replaceState(null, null, window.location.pathname + window.location.search);
+                
+                // 顯示登錄頁面
+                await showLoginPage();
+                
+                console.info('✅ 身份驗證狀態已重置');
+            }
+        };
 
         // 統一事件委託系統 - 替代內聯onclick
         function initializeEventDelegation() {
