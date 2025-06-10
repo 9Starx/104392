@@ -1,0 +1,6 @@
+{
+  "provider": "auto",
+  "model": "auto",
+  "temperature": 0,
+  "prompt": "default"
+}

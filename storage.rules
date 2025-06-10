@@ -1,0 +1,44 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 測試路徑（用於權限檢測）
+    match /test/{fileName} {
+      allow read, write: if true;  // 允許測試
+    }
+    
+    // 支付碼規則
+    match /qrcodes/{phone}/{fileName} {
+      allow read: if true;  // 允許讀取支付碼
+      allow write: if request.resource.size < 2 * 1024 * 1024 &&  // 限制檔案大小為 2MB
+        request.resource.contentType.matches('image/.*');  // 只允許圖片檔案
+    }
+    
+    // 淘寶圖片規則
+    match /taobao/{phone}/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 2 * 1024 * 1024 &&  // 限制檔案大小為 2MB
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // 阿里巴巴圖片規則
+    match /alibaba/{phone}/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 2 * 1024 * 1024 &&  // 限制檔案大小為 2MB
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // 微信支付規則
+    match /wechat/{phone}/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 2 * 1024 * 1024 &&  // 限制檔案大小為 2MB
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // 其他平台規則
+    match /others/{phone}/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 2 * 1024 * 1024 &&  // 限制檔案大小為 2MB
+        request.resource.contentType.matches('image/.*');
+    }
+  }
+} 

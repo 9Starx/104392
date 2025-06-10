@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 會員集合規則
+    match /members/{memberId} {
+      // 允許讀取：所有人可以讀取會員資料（用於驗證登入）
+      allow read: if true;
+      
+      // 允許創建：任何人都可以創建新會員（註冊功能）
+      allow create: if true;
+      
+      // 允許更新：限制只能更新特定欄位
+      allow update: if resource.data.phone == memberId
+                    && (!('phone' in request.resource.data) || request.resource.data.phone == memberId)
+                    && (!('joinDate' in request.resource.data) || request.resource.data.joinDate == resource.data.joinDate);
+      
+      // 允許刪除會員資料（僅限後台管理）
+      allow delete: if true;
+    }
+    
+    // 訂單集合規則
+    match /orders/{orderId} {
+      // 允許讀取：所有人可以讀取訂單（管理員和用戶都需要）
+      allow read: if true;
+      
+      // 允許創建：任何人都可以創建訂單
+      allow create: if true;
+      
+      // 允許更新：可以更新訂單狀態和相關資訊
+      allow update: if true;
+      
+      // 不允許刪除訂單
+      allow delete: if false;
+    }
+    
+    // 系統設定集合規則
+    match /settings/{settingId} {
+      // 允許讀取：所有人可以讀取設定（用於計算價格）
+      allow read: if true;
+      
+      // 允許寫入：只允許 'procurement' 設定項目（實際使用的）
+      allow write: if settingId == 'procurement' &&
+                      request.resource.data.size() <= 15; // 限制字段數量
+    }
+    
+    // 錯誤日誌集合規則
+    match /error_logs/{logId} {
+      // 不允許讀取錯誤日誌
+      allow read: if false;
+      
+      // 允許創建錯誤日誌
+      allow create: if true;
+      
+      // 不允許更新或刪除錯誤日誌
+      allow update, delete: if false;
+    }
+    
+    // 安全記錄集合規則（用於後台管理系統登錄安全）
+    match /security/{deviceId} {
+      // 允許讀取：用於檢查設備鎖定狀態，限制只能讀取以 'device_' 開頭的文檔
+      allow read: if deviceId.matches('device_.*');
+      
+      // 允許創建：記錄新的登錄失敗嘗試，限制必須包含基本字段
+      allow create: if deviceId.matches('device_.*') &&
+                       request.resource.data.keys().hasAll(['attempts', 'lastAttempt']) &&
+                       request.resource.data.attempts is number &&
+                       request.resource.data.attempts >= 1;
+      
+      // 允許更新：更新登錄嘗試次數和鎖定狀態，限制只能增加嘗試次數或設置封禁
+      allow update: if deviceId.matches('device_.*') &&
+                       (request.resource.data.attempts >= resource.data.attempts ||
+                        request.resource.data.keys().hasAny(['permanentBlock']));
+      
+      // 允許刪除：登錄成功時清除安全記錄
+      allow delete: if deviceId.matches('device_.*');
+    }
+    
+    // 管理員會話集合規則（新版本 - 支援設備指紋認證）
+    match /adminSessions/{sessionId} {
+      // 允許讀取：用於檢查認證狀態，限制只能讀取以 'session_' 開頭的文檔
+      allow read: if sessionId.matches('session_.*');
+      
+      // 允許創建：記錄新的登錄會話，限制必須包含基本字段
+      allow create: if sessionId.matches('session_.*') &&
+                       request.resource.data.keys().hasAll(['isAuthenticated', 'createdAt', 'lastActivity']) &&
+                       request.resource.data.isAuthenticated is bool &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.lastActivity is timestamp;
+      
+      // 允許更新：僅允許更新最後活動時間
+      allow update: if sessionId.matches('session_.*') &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivity']) &&
+                       request.resource.data.lastActivity is timestamp;
+      
+      // 允許刪除：登出時清除會話記錄
+      allow delete: if sessionId.matches('session_.*');
+    }
+    
+    // 系統配置集合規則（用於系統初始化標記）
+    match /systemConfig/{configType} {
+      // 允許讀取：檢查系統初始化狀態
+      allow read: if configType in ['initialization'];
+      
+      // 允許創建和更新：記錄系統初始化狀態，限制必須包含基本字段
+      allow write: if configType in ['initialization'] &&
+                      request.resource.data.keys().hasAll(['lastUpdatedInitialized']) &&
+                      request.resource.data.lastUpdatedInitialized is bool &&
+                      request.resource.data.size() <= 10; // 限制字段數量
+      
+      // 不允許刪除：保持系統配置完整性
+      allow delete: if false;
+    }
+    
+
+    
+    // 其他集合預設拒絕所有操作
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 

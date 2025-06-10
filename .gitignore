@@ -1,0 +1,35 @@
+# Node modules
+node_modules/
+functions/node_modules/
+
+# Build files
+*.log
+npm-debug.log*
+.npm
+
+# IDE files
+.cursor/
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deployment scripts
+deploy.bat
+deploy.ps1
+deploy-*.bat
+
+# Firebase cache
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Git backup files
+.git.backup/
+*.backup 
