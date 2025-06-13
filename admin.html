@@ -145,9 +145,15 @@
                 await this.loadScript('https://cdn.jsdelivr.net/npm/flatpickr', 200);
             },
             
-            // 延遲載入非關鍵資源
+            // 延遲載入非關鍵資源 - iOS兼容版
             loadNonCritical() {
-                requestIdleCallback(() => {
+                // requestIdleCallback 兼容性處理
+                const scheduleTask = window.requestIdleCallback || function(callback, options) {
+                    const timeout = options && options.timeout ? options.timeout : 0;
+                    return setTimeout(callback, timeout || 16);
+                };
+                
+                scheduleTask(() => {
                     this.loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js', 500);
                 }, { timeout: 2000 });
             }
