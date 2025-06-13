@@ -197,7 +197,94 @@
         })();
     </script>
     <style>
-        /* 企業級樣式系統 v3.0 */
+        /* 企業級樣式系統 v3.0 - iOS增強版 */
+        
+        /* iOS專用CSS變量 */
+        :root {
+            --ios-vh: 1vh;
+            --ios-safe-top: env(safe-area-inset-top, 0px);
+            --ios-safe-bottom: env(safe-area-inset-bottom, 0px);
+            --ios-safe-left: env(safe-area-inset-left, 0px);
+            --ios-safe-right: env(safe-area-inset-right, 0px);
+        }
+        
+        /* iOS Safari專用修正 */
+        @supports (-webkit-touch-callout: none) {
+            /* iOS Safari視窗高度問題修正 */
+            .modal {
+                height: calc(var(--ios-vh, 1vh) * 100) !important;
+            }
+            
+            /* iOS安全區域支援 */
+            body {
+                padding-top: var(--ios-safe-top);
+                padding-bottom: var(--ios-safe-bottom);
+                padding-left: var(--ios-safe-left);
+                padding-right: var(--ios-safe-right);
+            }
+            
+            /* iOS輸入框優化 */
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="date"],
+            input[type="time"],
+            input[type="datetime-local"],
+            input[type="number"],
+            textarea,
+            select {
+                -webkit-appearance: none;
+                appearance: none;
+                -webkit-border-radius: 4px;
+                border-radius: 4px;
+                /* iOS輸入框縮放問題修正 */
+                font-size: 16px !important;
+                /* 防止iOS Safari自動縮放 */
+                transform: translateZ(0);
+                /* iOS滾動穿透修正 */
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* iOS按鈕優化 */
+            button {
+                -webkit-appearance: none;
+                appearance: none;
+                -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+                /* iOS按鈕活動狀態 */
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+            
+            /* iOS滾動條優化 */
+            * {
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* iOS模態框修正 */
+            .modal-content {
+                /* iOS鍵盤彈出時的修正 */
+                max-height: calc(var(--ios-vh, 1vh) * 90);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* iOS日期選擇器修正 */
+            .flatpickr-calendar {
+                /* iOS定位問題修正 */
+                position: fixed !important;
+                z-index: 99999 !important;
+                /* iOS觸控優化 */
+                -webkit-tap-highlight-color: transparent;
+            }
+        }
+        
+        /* iOS橫屏優化 */
+        @media screen and (orientation: landscape) and (-webkit-min-device-pixel-ratio: 2) {
+            .modal-content {
+                max-height: 85vh;
+            }
+        }
 
         :root {
             --primary-color: #2563eb;
@@ -4571,7 +4658,35 @@
 
         }
 
-        // 安全的 flatpickr 初始化函數
+        // iOS相容性檢查工具
+        const iOSCompatibility = {
+            isIOS: () => {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            },
+            
+            isSafari: () => {
+                return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            },
+            
+            isPrivateMode: () => {
+                try {
+                    localStorage.setItem('test', 'test');
+                    localStorage.removeItem('test');
+                    return false;
+                } catch (e) {
+                    return true;
+                }
+            },
+            
+            getSafeStorageMethod: () => {
+                if (iOSCompatibility.isPrivateMode()) {
+                    return sessionStorage;
+                }
+                return localStorage;
+            }
+        };
+
+        // 增強的 flatpickr 初始化函數 - iOS專用優化
         function createSafeFlatpickr(selector, options = {}) {
             try {
                 // 檢查 flatpickr 是否載入
@@ -4580,48 +4695,137 @@
                     return null;
                 }
 
-                // 設定安全的預設選項，包含中文本地化
-                const safeOptions = {
-                    locale: 'zh_tw',  // 預設使用中文
-                    ...options
+                const element = document.querySelector(selector);
+                if (!element) {
+                    console.error(`元素 ${selector} 不存在`);
+                    return null;
+                }
+
+                // iOS專用優化設定
+                const iosOptimizedOptions = {
+                    locale: 'zh_tw',
+                    ...options,
+                    // iOS關鍵修正：強制啟用原生輸入
+                    disableMobile: false,  // 修正關鍵點1
+                    // iOS Safari優化
+                    clickOpens: !iOSCompatibility.isIOS(),
+                    allowInput: true,
+                    // 防止iOS滾動問題
+                    static: iOSCompatibility.isIOS(),
+                    // iOS觸控優化
+                    appendTo: iOSCompatibility.isIOS() ? document.body : undefined,
+                    // iOS日期選擇器增強
+                    onOpen: function(selectedDates, dateStr, instance) {
+                        if (iOSCompatibility.isIOS()) {
+                            // iOS專用：防止頁面滾動
+                            document.body.style.overflow = 'hidden';
+                            // 確保選擇器在視窗內
+                            setTimeout(() => {
+                                const calendar = instance.calendarContainer;
+                                if (calendar) {
+                                    calendar.style.zIndex = '99999';
+                                    calendar.style.position = 'fixed';
+                                }
+                            }, 50);
+                        }
+                        if (options.onOpen) options.onOpen(selectedDates, dateStr, instance);
+                    },
+                    onClose: function(selectedDates, dateStr, instance) {
+                        if (iOSCompatibility.isIOS()) {
+                            document.body.style.overflow = '';
+                        }
+                        if (options.onClose) options.onClose(selectedDates, dateStr, instance);
+                    }
                 };
 
-                // 如果指定了中文locale，確保中文設置可用
-                if (safeOptions.locale === 'zh_tw') {
-                    // 檢查中文 locale 是否已載入
+                // iOS原生input回退機制
+                if (iOSCompatibility.isIOS() && iOSCompatibility.isSafari()) {
+                    console.info('檢測到iOS Safari，優先使用原生輸入');
+                    
+                    // 設置原生輸入類型
+                    if (options.enableTime && options.noCalendar) {
+                        element.type = 'time';
+                    } else if (options.enableTime) {
+                        element.type = 'datetime-local';
+                    } else {
+                        element.type = 'date';
+                    }
+                    
+                    // 保留onChange回調
+                    if (options.onChange) {
+                        element.addEventListener('change', (e) => {
+                            options.onChange([new Date(e.target.value)], e.target.value, null);
+                        });
+                    }
+                    
+                    return {
+                        setDate: (date) => {
+                            if (date instanceof Date) {
+                                if (element.type === 'time') {
+                                    element.value = date.toTimeString().slice(0, 5);
+                                } else if (element.type === 'datetime-local') {
+                                    element.value = date.toISOString().slice(0, 16);
+                                } else {
+                                    element.value = date.toISOString().slice(0, 10);
+                                }
+                            } else {
+                                element.value = date;
+                            }
+                        },
+                        destroy: () => {
+                            element.type = 'text';
+                        }
+                    };
+                }
+
+                // 標準flatpickr初始化
+                if (iosOptimizedOptions.locale === 'zh_tw') {
                     if (!flatpickr.l10ns || !flatpickr.l10ns.zh_tw) {
                         console.warn('中文 locale 尚未載入，等待載入...');
-                        // 等待中文本地化載入完成
                         let retryCount = 0;
                         const waitForLocale = () => {
                             if (flatpickr.l10ns && flatpickr.l10ns.zh_tw) {
-                                return flatpickr(selector, safeOptions);
+                                return flatpickr(selector, iosOptimizedOptions);
                             } else if (retryCount < 10) {
                                 retryCount++;
                                 setTimeout(waitForLocale, 100);
                                 return null;
                             } else {
                                 console.warn('等待中文 locale 超時，使用英文');
-                                delete safeOptions.locale;
-                                return flatpickr(selector, safeOptions);
+                                delete iosOptimizedOptions.locale;
+                                return flatpickr(selector, iosOptimizedOptions);
                             }
                         };
                         return waitForLocale();
                     }
                 }
 
-                return flatpickr(selector, safeOptions);
+                return flatpickr(selector, iosOptimizedOptions);
             } catch (error) {
                 console.error('Flatpickr 初始化錯誤:', error);
-                // 嘗試使用基本選項重新初始化
-                try {
-                    const basicOptions = { ...options };
-                    delete basicOptions.locale;
-                    return flatpickr(selector, basicOptions);
-                } catch (fallbackError) {
-                    console.error('Flatpickr 基本初始化也失敗:', fallbackError);
-                    return null;
+                
+                // iOS原生回退方案
+                const element = document.querySelector(selector);
+                if (element && iOSCompatibility.isIOS()) {
+                    console.info('使用iOS原生輸入作為回退方案');
+                    if (options.enableTime && options.noCalendar) {
+                        element.type = 'time';
+                    } else if (options.enableTime) {
+                        element.type = 'datetime-local';
+                    } else {
+                        element.type = 'date';
+                    }
+                    return {
+                        setDate: (date) => {
+                            element.value = date instanceof Date ? date.toISOString().slice(0, 10) : date;
+                        },
+                        destroy: () => {
+                            element.type = 'text';
+                        }
+                    };
                 }
+                
+                return null;
             }
         }
 
@@ -4629,34 +4833,45 @@
 
         // 舊的頁面載入邏輯已移至登錄系統中的 initializeAfterLogin 函數
 
-        // 頁面卸載時清理資源
+        // 頁面卸載時清理資源 - iOS增強版
         window.addEventListener('beforeunload', function() {
             try {
-            // 清理訂單詳情監聽器
-            if (orderDetailsListener) {
-                orderDetailsListener();
-                orderDetailsListener = null;
-            }
-            
-            // 清理統一管理器監聽器
-            if (typeof listManager !== 'undefined') {
-                listManager.stopAllListening();
-            }
-            
-            // 清理圖表資源
-            if (fastChartManager) {
-                fastChartManager.cleanup();
-            }
-            
-            // 清理圖片預覽管理器
-            if (typeof ImagePreviewManager !== 'undefined') {
-                ImagePreviewManager.removeEventListeners();
+                // 清理訂單詳情監聽器
+                if (orderDetailsListener) {
+                    orderDetailsListener();
+                    orderDetailsListener = null;
+                }
+                
+                // 清理統一管理器監聽器
+                if (typeof listManager !== 'undefined') {
+                    listManager.stopAllListening();
+                }
+                
+                // 清理圖表資源
+                if (fastChartManager) {
+                    fastChartManager.cleanup();
+                }
+                
+                // 清理圖片預覽管理器
+                if (typeof ImagePreviewManager !== 'undefined') {
+                    ImagePreviewManager.removeEventListeners();
                 }
                 
                 // 清理所有模態框中的圖片資源
                 cleanupAllImageResources();
                 
-    
+                // iOS專用清理
+                if (typeof TouchEventManager !== 'undefined') {
+                    TouchEventManager.cleanup();
+                }
+                
+                // 清理iOS專用CSS變量
+                if (iOSCompatibility.isIOS()) {
+                    document.body.style.overflow = '';
+                    document.body.style.webkitOverflowScrolling = '';
+                }
+                
+                console.info('🔄 所有資源清理完成（iOS優化）');
             } catch (error) {
                 console.error('❌ 頁面資源清理時發生錯誤:', error);
             }
@@ -5588,24 +5803,135 @@
 
 
 
-        // ===== 全域錯誤處理器 =====
+        // iOS專用安全存儲管理器
+        const SafeStorage = {
+            set: (key, value) => {
+                try {
+                    const storage = iOSCompatibility.getSafeStorageMethod();
+                    storage.setItem(key, typeof value === 'object' ? JSON.stringify(value) : value);
+                    return true;
+                } catch (error) {
+                    console.warn('存儲失敗，使用記憶體暫存:', error);
+                    if (!window.memoryStorage) window.memoryStorage = {};
+                    window.memoryStorage[key] = value;
+                    return false;
+                }
+            },
+            
+            get: (key) => {
+                try {
+                    const storage = iOSCompatibility.getSafeStorageMethod();
+                    const value = storage.getItem(key);
+                    try {
+                        return JSON.parse(value);
+                    } catch {
+                        return value;
+                    }
+                } catch (error) {
+                    console.warn('讀取存儲失敗，使用記憶體暫存:', error);
+                    return window.memoryStorage ? window.memoryStorage[key] : null;
+                }
+            },
+            
+            remove: (key) => {
+                try {
+                    const storage = iOSCompatibility.getSafeStorageMethod();
+                    storage.removeItem(key);
+                    if (window.memoryStorage) delete window.memoryStorage[key];
+                } catch (error) {
+                    console.warn('刪除存儲失敗:', error);
+                }
+            }
+        };
+
+        // iOS觸控事件處理增強 - 衝突預防版
+        const TouchEventManager = {
+            isInitialized: false,
+            eventHandlers: [],
+            
+            init: () => {
+                if (iOSCompatibility.isIOS() && !TouchEventManager.isInitialized) {
+                    // 防止iOS Safari的雙擊縮放
+                    const touchStartHandler = function(event) {
+                        if (event.touches.length > 1) {
+                            event.preventDefault();
+                        }
+                    };
+                    
+                    // iOS特定的點擊處理 - 避免與onclick衝突
+                    const touchEndHandler = function(event) {
+                        // 只處理輸入元素，避免與onclick衝突
+                        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                            event.target.focus();
+                        }
+                    };
+                    
+                    document.addEventListener('touchstart', touchStartHandler, { passive: false });
+                    document.addEventListener('touchend', touchEndHandler, { passive: true });
+                    
+                    // 記錄事件處理器以便清理
+                    TouchEventManager.eventHandlers.push(
+                        { type: 'touchstart', handler: touchStartHandler },
+                        { type: 'touchend', handler: touchEndHandler }
+                    );
+                    
+                    // iOS滾動優化
+                    document.body.style.webkitOverflowScrolling = 'touch';
+                    
+                    TouchEventManager.isInitialized = true;
+                    console.info('✅ iOS觸控事件優化已啟用（衝突安全版）');
+                }
+            },
+            
+            // 清理事件監聽器
+            cleanup: () => {
+                TouchEventManager.eventHandlers.forEach(({type, handler}) => {
+                    document.removeEventListener(type, handler);
+                });
+                TouchEventManager.eventHandlers = [];
+                TouchEventManager.isInitialized = false;
+                console.info('🔄 iOS觸控事件處理器已清理');
+            }
+        };
+
+        // ===== 全域錯誤處理器 - iOS增強版 =====
         window.addEventListener('unhandledrejection', function(event) {
             console.error('未處理的 Promise 拒絕:', event.reason);
+            
+            // iOS特殊錯誤處理
+            if (iOSCompatibility.isIOS() && event.reason && event.reason.message) {
+                if (event.reason.message.includes('LocalStorage') || 
+                    event.reason.message.includes('QuotaExceededError')) {
+                    console.warn('iOS存儲限制錯誤，切換到安全存儲模式');
+                    SafeStorage.set('fallback_mode', true);
+                }
+            }
             
             // 特別處理 Firebase 錯誤
             if (event.reason && event.reason.code) {
                 console.warn('Firebase 錯誤已被捕獲:', event.reason.code, event.reason.message);
+                
+                // iOS Safari Firebase連線問題特殊處理
+                if (iOSCompatibility.isIOS() && event.reason.code === 'unavailable') {
+                    console.warn('iOS網路連線異常，建議重新整理頁面');
+                }
             }
             
-            // 防止預設的控制台錯誤顯示
             event.preventDefault();
         });
 
         window.addEventListener('error', function(event) {
+            // iOS Safari特殊錯誤處理
+            if (iOSCompatibility.isIOS() && event.error) {
+                if (event.error.message && event.error.message.includes('Script error')) {
+                    console.warn('iOS跨域腳本錯誤，可能的CORS問題');
+                    return;
+                }
+            }
+            
             // 特別處理圖片相關錯誤
             if (event.message && event.message.includes('appendChild')) {
                 console.warn('DOM 操作錯誤已被捕獲:', event.message);
-                // 防止錯誤中斷程序執行
                 event.preventDefault();
             }
             
@@ -6270,25 +6596,25 @@
                 expectedTimeElement.addEventListener('change', updateDateTimeDisplay);
 
                 try {
-                    // 初始化日期選擇器（加入錯誤處理）
+                    // 初始化日期選擇器（iOS優化版）
                     const datePicker = createSafeFlatpickr("#expectedDate", {
                         locale: "zh_tw",
                         dateFormat: "Y-m-d",
                         minDate: "today",
-                        disableMobile: "true",
+                        // iOS修正：移除disableMobile限制
                         onChange: function(selectedDates, dateStr, instance) {
                             setTimeout(updateDateTimeDisplay, 50);
                         }
                     });
 
-                    // 初始化時間選擇器（加入錯誤處理）
+                    // 初始化時間選擇器（iOS優化版）
                     const timePicker = createSafeFlatpickr("#expectedTime", {
                         locale: "zh_tw",
                         enableTime: true,
                         noCalendar: true,
                         dateFormat: "H:i",
                         time_24hr: true,
-                        disableMobile: "true",
+                        // iOS修正：移除disableMobile限制
                         onChange: function(selectedDates, dateStr, instance) {
                             setTimeout(updateDateTimeDisplay, 50);
                         }
@@ -9192,8 +9518,8 @@
                     const picker = createSafeFlatpickr("#editMemberExpiry", {
                         locale: "zh_tw",
                         dateFormat: "Y-m-d",
-                        minDate: "today",
-                        disableMobile: true
+                        minDate: "today"
+                        // iOS修正：移除disableMobile限制
                     });
 
                     // 處理異步返回的結果
@@ -9882,25 +10208,20 @@
                         timestamp: Date.now(),
                         expires: Date.now() + (expireMinutes * 60 * 1000)
                     };
-                    try {
-                        localStorage.setItem(`admin_cache_${key}`, JSON.stringify(item));
-                    } catch (error) {
-                        console.warn('快取儲存失敗:', error);
-                    }
+                    SafeStorage.set(`admin_cache_${key}`, item);
                 },
                 
                 get(key) {
                     try {
-                        const item = localStorage.getItem(`admin_cache_${key}`);
+                        const item = SafeStorage.get(`admin_cache_${key}`);
                         if (!item) return null;
                         
-                        const parsed = JSON.parse(item);
-                        if (Date.now() > parsed.expires) {
+                        if (Date.now() > item.expires) {
                             this.remove(key);
                             return null;
                         }
                         
-                        return parsed.data;
+                        return item.data;
                     } catch (error) {
                         console.warn('快取讀取失敗:', error);
                         return null;
@@ -9908,20 +10229,26 @@
                 },
                 
                 remove(key) {
-                    try {
-                        localStorage.removeItem(`admin_cache_${key}`);
-                    } catch (error) {
-                        console.warn('快取清除失敗:', error);
-                    }
+                    SafeStorage.remove(`admin_cache_${key}`);
                 },
                 
                 clear() {
                     try {
-                        Object.keys(localStorage).forEach(key => {
+                        // iOS安全清理
+                        const storage = iOSCompatibility.getSafeStorageMethod();
+                        Object.keys(storage).forEach(key => {
                             if (key.startsWith('admin_cache_')) {
-                                localStorage.removeItem(key);
+                                SafeStorage.remove(key.replace('admin_cache_', ''));
                             }
                         });
+                        // 清理記憶體快取
+                        if (window.memoryStorage) {
+                            Object.keys(window.memoryStorage).forEach(key => {
+                                if (key.startsWith('admin_cache_')) {
+                                    delete window.memoryStorage[key];
+                                }
+                            });
+                        }
                     } catch (error) {
                         console.warn('快取全清失敗:', error);
                     }
@@ -10405,15 +10732,15 @@
             // 設置登錄狀態
             setAuthenticated() {
                 const now = Date.now();
-                localStorage.setItem('adminAuthenticated', 'true');
-                localStorage.setItem('adminLoginTime', now.toString());
+                SafeStorage.set('adminAuthenticated', 'true');
+                SafeStorage.set('adminLoginTime', now.toString());
                 console.info('✅ 登錄狀態已設置', new Date(now).toLocaleString());
             },
             
             // 檢查登錄狀態
             checkAuthenticated() {
-                const authStatus = localStorage.getItem('adminAuthenticated');
-                const loginTime = localStorage.getItem('adminLoginTime');
+                const authStatus = SafeStorage.get('adminAuthenticated');
+                const loginTime = SafeStorage.get('adminLoginTime');
                 
                 if (authStatus !== 'true' || !loginTime) {
                     return false;
@@ -10434,8 +10761,8 @@
             
             // 清除登錄狀態
             clearAuthenticated() {
-                localStorage.removeItem('adminAuthenticated');
-                localStorage.removeItem('adminLoginTime');
+                SafeStorage.remove('adminAuthenticated');
+                SafeStorage.remove('adminLoginTime');
                 console.info('🔄 登錄狀態已清除');
             },
             
@@ -10443,15 +10770,15 @@
             extendSession() {
                 if (this.checkAuthenticated()) {
                     const now = Date.now();
-                    localStorage.setItem('adminLoginTime', now.toString());
+                    SafeStorage.set('adminLoginTime', now.toString());
                     console.info('⏰ 登錄時間已延長', new Date(now).toLocaleString());
                 }
             },
             
             // 取得登錄資訊
             getLoginInfo() {
-                const authStatus = localStorage.getItem('adminAuthenticated');
-                const loginTime = localStorage.getItem('adminLoginTime');
+                const authStatus = SafeStorage.get('adminAuthenticated');
+                const loginTime = SafeStorage.get('adminLoginTime');
                 
                 if (authStatus === 'true' && loginTime) {
                     const loginTimestamp = parseInt(loginTime);
@@ -10478,9 +10805,69 @@
             }
         };
 
-        // 設置版本信息和初始化狀態
+        // 代碼品質監控和衝突檢查系統
+        const CodeQualityMonitor = {
+            conflicts: [],
+            deprecatedUsage: [],
+            
+            // 檢查全域變數衝突
+            checkGlobalConflicts: () => {
+                const potentialConflicts = [
+                    'iOSCompatibility', 'SafeStorage', 'TouchEventManager', 
+                    'createSafeFlatpickr', 'ModalManager'
+                ];
+                
+                potentialConflicts.forEach(name => {
+                    if (window[name] && typeof window[name] !== 'undefined') {
+                        if (CodeQualityMonitor.conflicts.indexOf(name) === -1) {
+                            CodeQualityMonitor.conflicts.push(name);
+                        }
+                    }
+                });
+                
+                if (CodeQualityMonitor.conflicts.length > 0) {
+                    console.warn('⚠️ 檢測到全域變數衝突:', CodeQualityMonitor.conflicts);
+                }
+            },
+            
+            // 檢查事件處理器衝突
+            checkEventConflicts: () => {
+                const inlineEvents = document.querySelectorAll('[onclick], [onchange], [oninput]');
+                if (inlineEvents.length > 0 && TouchEventManager.isInitialized) {
+                    console.warn('⚠️ 檢測到內聯事件與觸控處理器可能衝突, 數量:', inlineEvents.length);
+                    return true;
+                }
+                return false;
+            },
+            
+            // 檢查localStorage使用
+            checkDeprecatedStorage: () => {
+                const scriptContent = document.documentElement.innerHTML;
+                const localStorageMatches = scriptContent.match(/localStorage\.(get|set|remove)/g);
+                if (localStorageMatches && localStorageMatches.length > 6) { // 允許6個iOS檢測用的
+                    console.warn('⚠️ 檢測到可能的localStorage直接使用，建議使用SafeStorage');
+                }
+            },
+            
+            // 執行完整檢查
+            runFullCheck: () => {
+                console.group('🔍 代碼品質檢查');
+                CodeQualityMonitor.checkGlobalConflicts();
+                const hasEventConflicts = CodeQualityMonitor.checkEventConflicts();
+                CodeQualityMonitor.checkDeprecatedStorage();
+                
+                console.info('📊 檢查結果:', {
+                    全域衝突: CodeQualityMonitor.conflicts.length,
+                    事件衝突: hasEventConflicts ? '是' : '否',
+                    iOS優化: iOSCompatibility.isIOS() ? '已啟用' : '未啟用'
+                });
+                console.groupEnd();
+            }
+        };
+
+        // 設置版本信息和初始化狀態 - iOS增強版
         window.AdminSystem = {
-            version: '2.4.2', // 身份驗證修正版本
+            version: '2.5.0', // iOS兼容性增強版本
             lastUpdated: new Date().toISOString(),
             isInitialized: false,
             firebaseAvailable: false,
@@ -10492,7 +10879,11 @@
                 criticalPathOptimization: true, // 關鍵路徑優化
                 refreshOptimization: true, // 重新整理優化
                 persistentCache: true, // 持久化快取
-                serviceWorkerCache: true // Service Worker 快取
+                serviceWorkerCache: true, // Service Worker 快取
+                iosCompatibility: true, // iOS兼容性支援
+                safeStorage: true, // 安全存儲系統
+                touchOptimization: true, // 觸控優化
+                codeQualityMonitor: true // 代碼品質監控
             },
             performance: {
                 startTime: performance.now(),
@@ -10502,7 +10893,8 @@
                 cacheHitRate: 0,
                 loadMethod: 'unknown'
             },
-            refresh: RefreshOptimizer
+            refresh: RefreshOptimizer,
+            quality: CodeQualityMonitor
         };
         
         // 效能監控（增強版）
@@ -10686,6 +11078,28 @@
 
         // 統一頁面初始化 - 徹底清理，避免代碼衝突
         document.addEventListener('DOMContentLoaded', async function() {
+            // 初始化iOS專用功能
+            if (iOSCompatibility.isIOS()) {
+                console.info('🍎 檢測到iOS設備，啟動iOS專用優化');
+                TouchEventManager.init();
+                
+                // iOS Safari視窗高度修正
+                const setIOSHeight = () => {
+                    document.documentElement.style.setProperty('--ios-vh', `${window.innerHeight * 0.01}px`);
+                };
+                setIOSHeight();
+                window.addEventListener('resize', setIOSHeight);
+                window.addEventListener('orientationchange', () => {
+                    setTimeout(setIOSHeight, 100);
+                });
+            }
+            
+            // 執行代碼品質檢查（開發環境）
+            setTimeout(() => {
+                if (window.AdminSystem && window.AdminSystem.quality) {
+                    window.AdminSystem.quality.runFullCheck();
+                }
+            }, 2000); // 延遲2秒確保所有模組載入完成
             // 防止重複初始化
             if (window.AdminSystem?.isInitialized) {
                 console.warn('系統已初始化，跳過重複執行');
@@ -10820,8 +11234,8 @@
                 console.group('🔍 身份驗證診斷報告');
                 
                 // 檢查本地儲存
-                const localAuth = localStorage.getItem('adminAuthenticated');
-                const loginTime = localStorage.getItem('adminLoginTime');
+                const localAuth = SafeStorage.get('adminAuthenticated');
+                const loginTime = SafeStorage.get('adminLoginTime');
                 console.info('📱 本地儲存:', {
                     adminAuthenticated: localAuth,
                     adminLoginTime: loginTime ? new Date(parseInt(loginTime)).toLocaleString() : null
