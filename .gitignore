@@ -1,30 +1,32 @@
-# Node modules
-node_modules/
-functions/node_modules/
+# Firebase
+.firebaserc
+firebase.json
+firestore.rules
+firestore.indexes.json
+storage.rules
+functions/
 
-# Build files
-*.log
-npm-debug.log*
-.npm
-
-# IDE files
-.cursor/
+# IDE
 .vscode/
 .idea/
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
 
 # Deployment scripts
 deploy.bat
 deploy.ps1
 deploy-*.bat
-
-# Firebase cache
-.firebase/
-firebase-debug.log
-firebase-debug.*.log
 
 # Temporary files
 *.tmp
